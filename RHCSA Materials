@@ -342,6 +342,7 @@ Mounting & Unmounting
 				vgextend (vg name) (pv name)
 				vgdisplay
 		Logical Volume
+			a. Linear Logical Volume 
 			lvcreate -n (nama) -L (ukuran M) (nama vg)
 			EXTEND
 				lvextend -L +300M (name lv)
@@ -350,6 +351,11 @@ Mounting & Unmounting
 				MOUNT
 				xfs_growfs (/dir)
 				df -h (/mountpoint)
+			b. Striped Logical Volume (read/write parallel) (raid1)
+			lvcreate -n (nama) -L (ukuran M) -i2(physical volume num) -I64(stripes 64 Kb)
+			c. Mirrored Logical Volume (raidx)
+			lvcreate -n (nama) -L (Ukuran M) -m1
+			
 	4. udevadm settle
 	5. mkfs.xfs / mkswap (/dev/sdb) >>> ngasih UUID
 		Logical Volume
@@ -365,6 +371,12 @@ Mounting & Unmounting
 		- /dev/(vg name)/(logical volume)
 	9. systemctl daemon-reload
 	10. mount -a
+	Add Device Mapper(DM) Integrity RAID LV
+	1. lvconvert --raidintegrity y /dev/
+	Remove Integrity
+	1. lvconvert --raidintegrity n /dev/
+	View DM Integriy
+	1. lvs -a volume group
 
 EXTEND SWAP SPACE
 	1. mkswap /dev/vgname/lvname
