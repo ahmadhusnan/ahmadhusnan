@@ -475,6 +475,18 @@ NFS Mounting
 	12. nfsconf --set nfsd vers4.0 y
 	13. nfsconf --set nfsd vers4.1 y
 	14. nfsconf --set nfsd bers4.2 y
+	or change
+	15. sudo vi /etc/nfs.conf
+Auto NFS Mounting
+	1. yum install autofs
+	2. vim /etc/auto.master.d/(demo).autofs
+		/shares	/etc/auto.(demo) >>>> create before autofs
+			vim /etc/auto.(demo)
+				/work -rw,sync serverb:/shares/work
+	3. systemctl enable --now autofs
+				/mnt/docs -rw,sync serverb:/shares/docs
+				/remote /etc/autoshares
+					* -rw,sync,fstype=nfs4 serverb.lab.example.com:/shares/&
 	
 Firewall
 	1. firewall-cmd
@@ -522,4 +534,36 @@ Custom Port
 	7. semanage port -k | grep http
 	8. curl http://server:XX dari internal dan eksternal
 		
+Control BOOT PROCESS
+	GRUB2 (select boot loader)
+	1. grub2-install
+	grub2-mkconfig >>>>(create) /boot/grub2/grub.cfg
+	/etc/grub.d/ 	and	 /etc/grub/default/grub
 	
+	Initrams = archieve containing the kernel modules for boot and driver
+	1. lsinitrd  >>>> initramfs file check
+		execute /sbin/init (PID 1) link to systemd
+		execute initrd.target (include mount root file system to disk /sysroot)
+			configured in /etc/fstab
+			systemd
+			/etc/systemd/system/default.target	and 	/etc/systemd/system/
+	2. dracut >>>>> /etc/dracut.conf.d 	and 	/etc/def
+	
+	systemd
+	Target			Purpose
+	graphical.target	support multiple users, graphical-text-based login
+	multi-user.target	support multiple users, text-based login
+	rescue.target		sulogin, basic system initialization
+	emergency.target	sulogin, initramfs pivot complete, system root mounted on /read only
+	1. systemctl list-dependencies graphical.target
+	2. systemctl list-units --type=target --all
+	Change target
+	1. systemctl isolate multi-user.target
+	Default target
+	1. systemctl get-dafaults (xxx.target)
+	Change target at boot
+	* interupt in boot press any key
+	1. press e 
+	2. move cursor to line start with linux
+	3. append systemd.unit=rescue.target
+	4. ctrl+x
