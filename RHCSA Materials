@@ -377,6 +377,24 @@ Mounting & Unmounting
 	1. lvconvert --raidintegrity n /dev/
 	View DM Integriy
 	1. lvs -a volume group
+	
+STRATIS (LAYERED STORAGE)
+	1. yum install stratis-cli stratisd
+	2. systemctl enable --now stratisd
+	3. stratis pool create pool1 /dev/vdb
+	4. stratis pool list
+	Add more block
+	5. stratis pool add-data pool1 /dev/vdc
+	6. stratis blockdev list pool1
+	Create
+	7. stratis filesystem create pool1 filesystem1
+	Snapshot
+	8. stratis filesystem snapshot pool1 filesystem snapshot1
+	9. stratis filesystem list
+	Mount
+	10. lsblk --output=UUID /stratis/pool1/filesystem1
+	entry to /etc/fstab
+	11. UUID=xxx /mount xfs defaults,x-systemd.requires=stratisd.service 0 0
 
 EXTEND SWAP SPACE
 	1. mkswap /dev/vgname/lvname
