@@ -1,0 +1,78 @@
+Control BOOT PROCESS
+	
+    GRUB2 (select boot loader)
+	  1. grub2-install
+	    grub2-mkconfig >>>>(create) /boot/grub2/grub.cfg
+	  /etc/grub.d/ 	and	 /etc/grub/default/grub
+	
+	  Initrams = archieve containing the kernel modules for boot and driver
+	  1. lsinitrd  >>>> initramfs file check
+		    execute /sbin/init (PID 1) link to systemd
+		      execute initrd.target (include mount root file system to disk /sysroot)
+			    configured in /etc/fstab
+			    systemd
+			    /etc/systemd/system/default.target	and 	/etc/systemd/system/
+	  2. dracut >>>>> /etc/dracut.conf.d 	and 	/etc/def
+	
+	  systemd (SYSTEMD)
+	  Target			      Purpose
+	  graphical.target	support multiple users, graphical-text-based login
+	  multi-user.target	support multiple users, text-based login
+	  rescue.target		sulogin, basic system initialization
+	  emergency.target	sulogin, initramfs pivot complete, system root mounted on /read only
+	  
+      1. systemctl list-dependencies graphical.target
+	    2. systemctl list-units --type=target --all
+	  Change target
+	    1. systemctl isolate multi-user.target
+	  Default target
+	    1. systemctl get-dafaults (xxx.target)
+	  Change target at boot
+	  * interupt in boot press any key
+	    1. press e 
+	    2. move cursor to line start with linux
+	    3. append systemd.unit=rescue.target
+	    4. ctrl+x
+  
+          REPAIRING SYSTEMD BOOT ISSUES
+          Enabling debug-shell
+          1. systemctl enable debug-shell.service (on TTY9 [ctrl+alt+f9])
+          Using the Emergency and Rescue Targets
+          cant change /etc/fstab before mount -o remount,rw /
+          
+          ERROR IN /etc/fstab
+          PROBLEM                   RESULT
+          Corrupt file system       systemd try to repair, can autofixed, or system drop user to emergency shell
+          Non-exist device          wait for a while, system drop user to emergency shell after timeout
+          Non-exist mountpoint      system drop user to emergency shell
+          Incorrect mount option    system drop user to emergency shell
+  
+  
+  RESET ROOT PASSWORD
+    1. reboot system
+    2. interrupt press any key
+    3. move the cursor to kernel entry
+    4. Press 3 to edit entry
+    5. move to kernel command line (linux)
+    6. append ed.break, just before system hands from initramfs to actual system
+    7. press ctrl + x 
+      change root file system to read/write mode
+      remount /sysroot
+        1. switch_root:/# mount -o remount,rw /sysroot
+        2. switch_root:/# chroot /sysroot  (chroot jail reather /sysroot)
+        3. sh-4.4# passwd root
+        4. sh-4.4# touch /.autorelabel
+        5. exit
+        6. exit
+        7. reboot
+       
+  INSPECTING LOGS
+  1. journalctl   (/run/log/journal) *cleared when reboot
+     set storage parameter persistent in (/etc/systemd/journald.conf) to store in (/var/log/journal) *persistent when reboot
+     1. vim /etc/systemd/journald.conf
+        ----
+        Storage=persistent
+        ----
+     2. systemctl restart systemd-journald.service
+    inspect log from previous boot
+     1. journalctl -b -1 -p err
