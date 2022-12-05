@@ -381,21 +381,38 @@ Mounting & Unmounting
 STRATIS (LAYERED STORAGE)
 	1. yum install stratis-cli stratisd
 	2. systemctl enable --now stratisd
-	3. stratis pool create pool1 /dev/vdb
+	3. stratis pool create (name pool) (/block)
 	4. stratis pool list
 	Add more block
-	5. stratis pool add-data pool1 /dev/vdc
-	6. stratis blockdev list pool1
+		5. stratis pool add-data (name pool) (/block)
+		6. stratis blockdev list (name pool)
 	Create
-	7. stratis filesystem create pool1 filesystem1
+		7. stratis filesystem create (name pool) (name filesystem)
 	Snapshot
-	8. stratis filesystem snapshot pool1 filesystem snapshot1
-	9. stratis filesystem list
+		8. stratis filesystem snapshot (name pool) (name filesystem) (name snapshot)
 	Mount
-	10. lsblk --output=UUID /stratis/pool1/filesystem1
+		9. stratis filesystem list
 	entry to /etc/fstab
-	11. UUID=xxx /mount xfs defaults,x-systemd.requires=stratisd.service 0 0
-
+		11. UUID=xxx /mount xfs defaults,x-systemd.requires=stratisd.service 0 0
+		12. /stratis/stratispoolname/stratisfilesystem /mount xfs defaults, x-systemd.requires=stratisd.service 0 0
+	Remove stratis 
+		1. stratis filesystem destroy (name pool) (name filesystem)
+		2. stratis filesystem destroy (name pool) (name snap)
+		
+Virtual Data Optimizer (VDO Volume)
+	kvdo = control data compression
+	uds = deduplication
+		1. yum install vdo kmod-kvdo
+		2. vdo create --name=(name vdo) --device=/(block) --vdoLogicalSize=(Size K,M,G)
+		3. vdo status --name=(name vdo) 
+						| grep Deduplication
+						| grep Compression
+		4. mkfs.xfs -K /dev/mapper/vdo
+		5. udevadm settle
+		6. mkdir /(mount)
+		7. vdostats --human-readable
+	
+	
 EXTEND SWAP SPACE
 	1. mkswap /dev/vgname/lvname
 	2. swapon -va /dev/vgname/lvname
