@@ -1,0 +1,30 @@
+DOCKER
+
+  Starting Docker
+  1. systemctl start docker
+  
+  Running Docker
+  1. docker <object> <command> <options> <name>
+    with
+      object : container, image, network, and volume
+      command: run, ls, rename <old name> <new name>, stop, kill, start, restart
+      options: --publish <host port>:<container port>
+               --detach
+               --rm
+               --all
+               --name
+               
+      
+  Stopping Docker
+  1. Close Terminal
+  2. Option
+      docker <object> <command> --detach --publish <host port>:<container port>
+      
+  Create docker without running
+  1. docker container create  <options> <name>
+    with
+            options: --publish <host port>:<container port>
+                     --name
+
+  Remove Dangling Containers
+  1. docker container rm <option> <name or ID>
