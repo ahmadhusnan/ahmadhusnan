@@ -1,5 +1,7 @@
 DOCKER
+credit to : https://github.com/fhsinchy/docker-handbook-projects.git
 
+  CONTAINER
   Starting Docker
   1. systemctl start docker
   
@@ -28,3 +30,129 @@ DOCKER
 
   Remove Dangling Containers
   1. docker container rm <option> <name or ID>
+  
+  Interactive Mode (interactive program ex. ubuntu, node)
+  1. docker container run -i(interactive)t(tty) <option> <name>
+  
+    Run command inside a container
+    1. docker run <name> uname -at
+          echo -n my-secret | base64
+    or
+    2. docker container run --rm <image> sh -c  "echo -n my-secret | base64"
+    
+  Executable Images
+  Remove Extention
+  1. docker container run --rm -v $(pwd):/zone ~/local./bin/rmbyext <ext>
+  
+  CREATE DOCKER IMAGE
+  1. mkdir <name>
+  ex docker raw image
+      FROM ubuntu:latest
+
+          EXPOSE 80
+
+      RUN apt-get update && \
+          apt-get install nginx -y && \
+          apt-get clean && rm -rf /var/lib/apt/lists/*
+
+      CMD ["nginx", "-g", "daemon off;"]
+      
+      FROM ubuntu:latest
+
+      RUN apt-get update && \
+          apt-get install build-essential\ 
+                          libpcre3 \
+                          libpcre3-dev \
+                          zlib1g \
+                          zlib1g-dev \
+                          libssl1.1 \
+                          libssl-dev \
+                          -y && \
+          apt-get clean && rm -rf /var/lib/apt/lists/*
+
+      ARG FILENAME="nginx-1.19.2"
+      ARG EXTENSION="tar.gz"
+
+      ADD https://nginx.org/download/${FILENAME}.${EXTENSION} .
+
+      RUN tar -xvf ${FILENAME}.${EXTENSION} && rm ${FILENAME}.${EXTENSION}
+
+      RUN cd ${FILENAME} && \
+          ./configure \
+              --sbin-path=/usr/bin/nginx \
+              --conf-path=/etc/nginx/nginx.conf \
+              --error-log-path=/var/log/nginx/error.log \
+              --http-log-path=/var/log/nginx/access.log \
+              --with-pcre \
+              --pid-path=/var/run/nginx.pid \
+              --with-http_ssl_module && \
+          make && make install
+
+      RUN rm -rf /${FILENAME}}
+
+      CMD ["nginx", "-g", "daemon off;"]
+  2. docker image build --tag or -t <image repository or name>:<image tag> . (in dir)
+      or
+     docker image pull nginx:stable
+  3. docker container run --rm --detach --name <name> --publish 8080:80 <image number or tag>
+  
+  SHARE IMAGE ONLINE
+  1. docker image build --tag <docker hub username>/<image name>:<image tag>
+  2. docker image push <image repository>:<image tag>
+  
+  Containerize JavaScript
+  1. name Dockerfile.dev
+    RUN only with trigger not by allocate and make a run
+        ex
+        FROM node:lts-alpine
+
+        EXPOSE 3000
+
+        USER node
+
+        RUN mkdir -p /home/node/app
+
+        WORKDIR /home/node/app  >>>>>> working directory
+
+        COPY ./package.json .  >>>>>> copy json file to image
+        RUN npm install   >>>>>>>> install dependency from json
+
+        COPY . .  >>>>>>>>>>> rest project file
+
+        CMD [ "npm", "run", "dev" ]
+  
+  BIND Mount Docker
+  LOCAL FILESYSTEM ---copied--- CONTAINER FILE SYSTEM --- WEB/OUTPUT
+   to mounted local filesystem to container by feature vite
+  LOCAL FILESYSTEM ---referenced--- CONTAINER FILE SYSTEM --- WEB/OUTPUT
+  define volume
+  1. --volume <local file system directory absolute path>:<container file system directory absolute path>:<read write access>
+  ex
+      docker container run \
+        --rm \
+        --publish 3000:3000 \
+        --name hello-dock-dev \
+        --volume $(pwd):/home/node/app \
+        hello-dock:dev
+  
+  MULTISTAGE BUILD
+  1. Use node image as base and build the application
+      COPY --from=builder /app/dist /usr/share/nginx/html
+  2. Copy the files created using the node image to an nginx image
+  3. Create the final image based in nginx and discard all node related stuff
+ 
+ ex
+      FROM node:lts-alpine as builder
+
+      WORKDIR /app
+
+      COPY ./package.json ./
+      RUN npm install
+
+      COPY . .
+      RUN npm run build
+
+      FROM nginx:stable-alpine
+
+      EXPOSE 80
+
