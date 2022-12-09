@@ -488,8 +488,24 @@ Auto NFS Mounting
 				/remote /etc/autoshares
 					* -rw,sync,fstype=nfs4 serverb.lab.example.com:/shares/&
 	
-Firewall
+Firewall (/etc/firewalld/)
 	1. firewall-cmd
+		--get-default-zone
+		--set-default-zone=ZONE
+		--get-zones
+		--get-active-zones
+		--add-source=CIDR [--zone=ZONE]
+		--remove-source=CIDR [--zone=ZONE]
+		--add-interface=INTERFACE [--zone=ZONE]
+		--change-interface=INTERFACE [--zone=ZONE]
+		--list-all [--zone=ZONE]
+		--list-all-zones
+		--add-service=SERVICE [--zone=ZONE]
+		--add-port=PORT/PROTOCOL [--zone=ZONE]
+		--remove-service=SERVICE [--zone=ZONE]
+		--remove-port=PORT/PROTOCOL [--zone=ZONE]
+		--reload
+		
 	2. nftables
 		sudo systemctl status nftables
 		sudo systemctl mask nftables
@@ -503,7 +519,7 @@ Managing
 	6. systemctl status firewalld
 	7. systemctl restart firewalld
 	
-	WEB CONSOLE
+	WEB CONSOLE 
 	https://server:9090
 	add https services
 	curl https berhasil
@@ -511,7 +527,22 @@ Managing
 	MASK FIREWALL
 	1. systemctl status nftables
 	2. systemctl mask nftables
+Info Port for Firewalld Services
+	(/usr/lib/firewalld/services)
+	1. ssh 						: 22/tcp
+	2. dhcpv6					: 546/udp on the fe80::/64 IPv6
+	3. ipp printing					: 631/udp
+	4. samba (local windows file and print sharing)	: 137/udp 138/udp
+	5. mdns (multicast DNS)				: 5353/udp to ipv4 or ipv6
+	6. web application				: 8080/tcp
 	
+SELINUX Port Labeling
+	1. yum -y install selinux-policy-doc
+	2. semanage port -l
+	3. semanage port -a -t (port_label) -p tcp|udp PORTNAME (add)
+	4. semanage port -d -t (port_label) -p tcp|udp PORTNAME (delete)
+	5. semanage port -m -t (port_label) -p tcp|udp PORTNAME (modify)
+
 Custom Port
 	1. semanage port -a -t http_port_t -p tcp X
 	2. firewall-cmd --permanent --add-port=82/tcp
