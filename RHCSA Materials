@@ -24,6 +24,11 @@ Soft Linked (/home/user/configfiles)
 Hard Linked
 	-ln (existingfile/pointed) (namedfile)
 
+System copy (scp) use workshop terminal
+	1. scp -r *from (user@server:/dir) to (/destination dir) 
+	2. rsync -av (user@server:/dir) to (/destination dir)
+		ssh (user@server) 'logger "Log files synchronized"' >>> /var/log/
+
 Variable Expansion
 	-VARIABLENAME=value
 	-USERNAME=opertator
