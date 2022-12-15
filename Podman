@@ -1,0 +1,84 @@
+PODMAN
+
+Preparation of Ports
+sudo firewall-cmd --add-port=6443/tcp --permanent
+sudo firewall-cmd --reload
+
+Installation
+	1. yum -y install podman
+
+	IMAGES
+	LISTING IMAGES
+		1. podman images
+		2. podman inspect <Image ID or Repository>
+	
+	PULL IMAGES
+		1. podman pull <image:tag>
+		TAG IMAGE
+			1. podman tag <registry/name> <new/name>
+	
+	PUSH IMAGES
+		1. podman push <new/name>
+		
+	SAVE IMAGES
+		1. podman save <name.tar> <image:tag>
+		compressed
+		2. podman save <image:tag> | gzip > <name.tar.gz>
+		
+	PODMAN IMAGES
+	copy image to other server
+		1. podman load -i openshift.tar
+		or
+		1. podman load < <name.tar>
+		compressed
+		2. gunzip -c <name.tar.gz> | podman load
+		
+	RUNNING IMAGES
+		1. podman run <image ID>
+		in background
+		2. podman run -d <image ID>
+		exposed port
+		3. podman run -dit -p 80:80 <image ID>
+		
+	REMOVE IMAGES
+		1. podman rmi <image ID>
+		
+		CONTAINER 
+		Listing Container
+			1. podman -ps -a
+			search
+			2. podman search registry/container_image
+			ex : podman search registry.redhat.io/redis
+		STOP and REMOVE Container
+			1. podman stop <container ID>
+			2. podman rm <container ID>
+			
+		RUNNING CONTAINER
+		Persistent storage in server bare metal or VM
+			store file interactively
+				1. podman run --privileged -it -v </localhost dir>:</container dir> <name image/repo> /bin/bash
+		
+			POD
+				1. podman pod create
+					--cgroup-parent value 	= parent c group
+ 					--infra 		= group infra container
+					--infra-command 	= command run in infra container
+					--infra-image 		= infra container image
+					--label 		= metadata pod
+					--name 			= assign new name
+					--publish		= publish container port or range ports
+				2. podman pod list
+			
+			Running pod or assign pod with service
+				1. podman run -dt --pod <pod name> -p <port> <container> <container command>
+			
+			List
+				1. podman ps -a --
+			
+			Start & Stop POD
+				1. podman start <ID>
+				2. podman stop <ID>
+				
+			Execute pod
+				1. podman exec -it <ID>  /bin/bash
+			 
