@@ -8,9 +8,15 @@ Installation
 	1. yum -y install podman
 
 	IMAGES
+	repository made up of multiple layers (dockerfile)
 	LISTING IMAGES
-		1. podman images
-		2. podman inspect <Image ID or Repository>
+		1. podman search <image>
+		2. podman images
+		3. podman inspect <Image ID or Repository>
+		5. podman top <ID>
+	
+	BUILD IMAGE
+		1. podman build -t <service name> <https://github>
 	
 	PULL IMAGES
 		1. podman pull <image:tag>
@@ -18,7 +24,8 @@ Installation
 			1. podman tag <registry/name> <new/name>
 	
 	PUSH IMAGES
-		1. podman push <new/name>
+		1. podman login <registry> ex. docker.io quay.io
+		2. podman push <new/name>
 		
 	SAVE IMAGES
 		1. podman save <name.tar> <image:tag>
@@ -39,6 +46,8 @@ Installation
 		2. podman run -d <image ID>
 		exposed port
 		3. podman run -dit -p 80:80 <image ID>
+		ROOTLESS by using -u
+		4. podman run -it -u <user> <image> /bin/bash
 		
 	REMOVE IMAGES
 		1. podman rmi <image ID>
