@@ -466,7 +466,8 @@ SELinux (httpd) (/etc/selinux/config)
 		Userdir public_html
 		2. mkdir ~/public_html
 		3. chmod 711~
-	
+			TEST
+			http://servera/~student/index.html
 NFS Mounting
 	1. sudo yum install nfs-utils
 	2. mkdir mountpoint
