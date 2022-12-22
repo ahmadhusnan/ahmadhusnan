@@ -431,14 +431,18 @@ SELinux (httpd) (/etc/selinux/config)
 	2. semanage = yum install policycoreutils-python-utils -y
 	3. yum install setroubleshoot-server -y
 	4. systemctl stop firewalld (to access without determine port)
-	5. vi/etc/httpd/conf/httpd.conf  TEST http://server/index.html
-		"ECHO"
+	5. vi/etc/httpd/conf/httpd.conf  
+		change
+		DocumentRoot "/dir"
+		<Directory "/dir">
+			TEST http://server/index.html
+			"ECHO"
 	6. vi /etc/httpd/conf.d/conf.d/userdir.conf
 		<VirtualHost *:80>parte
 			DocumentRoot /userdir
 		</VirtualHost>
 		
-		<Directory /custom>
+		<Directory /dir>
 		Require all granted
 		</Directory>
 	7. systemctl restart --now httpd
