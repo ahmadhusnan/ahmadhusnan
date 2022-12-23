@@ -519,6 +519,12 @@ Firewall (/etc/firewalld/)
 	2. nftables
 		sudo systemctl status nftables
 		sudo systemctl mask nftables
+		
+	3. firewall-cmd --get-dafault-zone
+	4. firewall-cmd --set-default-zone <zone>
+	5. firewall-cmd --permanent --zone=public --list-all
+	6. firewall-cmd --permanent --zone=public --add-port=1001/tcp
+	
 Managing
 	1. systemctl start firewall
 	2. sudo yum install httpd mod_ssl
