@@ -537,6 +537,7 @@ Managing
 	MASK FIREWALL
 	1. systemctl status nftables
 	2. systemctl mask nftables
+	
 Info Port for Firewalld Services
 	(/usr/lib/firewalld/services)
 	1. ssh 						: 22/tcp
@@ -549,9 +550,9 @@ Info Port for Firewalld Services
 SELINUX Port Labeling
 	1. yum -y install selinux-policy-doc
 	2. semanage port -l
-	3. semanage port -a -t (port_label) -p tcp|udp PORTNAME (add)
-	4. semanage port -d -t (port_label) -p tcp|udp PORTNAME (delete)
-	5. semanage port -m -t (port_label) -p tcp|udp PORTNAME (modify)
+	3. semanage port --permanent -a -t (port_label) -p tcp|udp PORTNAME (add)
+	4. semanage port --permanent -d -t (port_label) -p tcp|udp PORTNAME (delete)
+	5. semanage port --permanent -m -t (port_label) -p tcp|udp PORTNAME (modify)
 
 Custom Port
 	1. semanage port -a -t http_port_t -p tcp X
