@@ -1,0 +1,122 @@
+ANSIBLE
+
+ARCHITECTURE
+ 	Control Node (Admin laptop, etc)
+  	 	Have Ansible project files
+  	Managed Hosts
+     	Collected in called inventory (static or dynamic text)
+	Script Type
+		Playbook (series of tasks in YAML format)
+			Task (run a module in python based, etc)
+			Declarative type
+			*Attention
+			Permission, mounted file system
+			
+RED HAT ANSIBLE TOWER
+	Enterprise framework Ansible
+	to
+		control access playbooks
+		manage inventory
+	provide
+		web UI
+		RESTful API
+	
+USE CASES
+	1. Config Management and Deployment
+	2. Application Deployment
+	3. Provisioning (RHAT)
+		ex. 
+			PXE booting
+			kickstarting bare-metal  or VM
+			creating VM (from template)
+			creating cloud instance (from template)
+	4. CI/CD (Playbook)
+	5. Security and Compliance
+	6. Orchestration (interact multiple configuration)
+	
+INSTALL ANSIBLE
+	Prerequesities
+		1. Python 2 (RHEL 7) or Python 3 (RHEL 8)
+			yum list installed python
+		2. sshpass
+		3. Python3-markupsafe
+		4. Python3-jinja2
+		5. Python3-babel
+		6. Python3-jmespath
+		7. python*-winrm (windows env) package
+		8. libselinux-python
+		
+		Windows Server
+		1. PowerShell 3.0
+		2. .NET Framework 4.0
+		
+	Repositories Ansible (RHEL 8)
+		
+	Install
+		subscription-manager register
+		subscription-manager refresh
+		subscription-manager list --available
+		subscription-manager attach --pool=<pool id here of ansible subscription>
+		*subscription-manager repos --enable rhel-7-server-ansible-2-rpms (RHEL7)
+		subscription-manager repos --enable satellite-tools-6.6-for-rhel-8-x86_64-rpms
+		subscription-manager repos --enable ansible-2-for-rhel-8-x86_64-rpms (RHEL8)
+		yum install ansible
+		
+		
+ANSIBLE CONFIGURATION
+	Default path
+	etc path
+		/etc/ansible/ansible.cfg (defaults, prio=3)
+	homedir
+		~/.ansible.cfg (user config, prio=2)
+	current dir
+		./ansible.cfg (user config, prio=1) *recommended
+	
+	check config file location
+		ansible --version or -v
+		
+	ex. ansible.cfg
+	[defaults]
+	inventory = ./inventory
+	remote_user = user
+	ask_pass = false >>> SSH public key authentication
+	
+	[privilage_escalation]
+	become = true >>> auto switch user
+	become_method = sudo
+	become_user = root
+	become_ask_pass = false
+
+NETWORK DEVICE CONFIGURATION (/etc/ansible/hosts)*use different path recommended
+	Technique in control node
+		1. CLI over SSH
+		2. XML over SSH
+		3. API over HTTP(S)
+	
+	constum dir inventory command
+	ansible <host-or-group> -i <dirname> --list-hosts
+	*run in right directory
+	
+	ex.
+	[group hosts]
+	web1.example.com
+	web2.example.com
+	
+	[group2 hosts]
+	db1.example.com
+	db2.example.com
+	
+	[group3 hosts]
+	web1.example.com
+	db1.example.com
+	
+	[group:nested]
+	canada
+	usa
+	
+	ex.
+	[group]
+	washington[1:2].example.com
+	
+	
+	
