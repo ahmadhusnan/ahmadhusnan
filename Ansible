@@ -76,16 +76,23 @@ ANSIBLE CONFIGURATION
 		ansible --version or -v
 		
 	ex. ansible.cfg
-	[defaults]
-	inventory = ./inventory
-	remote_user = user
-	ask_pass = false >>> SSH public key authentication
+		[defaults]
+		inventory = ./inventory *directory config
+		remote_user = user
+		ask_pass = false >>> SSH public key authentication
+		ansible_conncection: winrm / smart / etc
+		ansible_port: 5986
 	
-	[privilage_escalation]
-	become = true >>> auto switch user
-	become_method = sudo
-	become_user = root
-	become_ask_pass = false
+		[privilage_escalation]
+		become = true >>> auto switch user
+		become_method = sudo
+		become_user = root
+		become_ask_pass = false
+	
+	*Set useransible to have no password
+	/etc/sudoers/
+		## password-less sudo for Ansible user
+		someuser ALL=(ALL) NOPASSWD:ALL
 
 NETWORK DEVICE CONFIGURATION (/etc/ansible/hosts)*use different path recommended
 	Technique in control node
@@ -117,6 +124,34 @@ NETWORK DEVICE CONFIGURATION (/etc/ansible/hosts)*use different path recommended
 	ex.
 	[group]
 	washington[1:2].example.com
+
+AD HOC COMMAND
+	COMMAND
+	ansible <argument/hosts> <argument name/sub program from argument/module> [option for argument name] [option for argument name]
+	ex.
+	1. ansible host pattern -m module [-a 'module arguments'] [-i inventory]
+	2. ansible all -m ping
+	3. ansible webservers -m ping
 	
+	MODULE CATEGORY					MODULES
+	Files Modules					copy [argument] >>> 'argument'
+							file [argument] 
+							lineinfile [argument] 
+							synchronize [argument]
+	Software package modules			package [argument] 
+							yum [argument] 
+							apt [argument] 
+							dnf [argument] 
+							gem [argument]
+							pip [argument]
+	System modules					firewalld [argument]
+							reboot [argument]
+							service[argument]
+							user [argument]
+	Net Tools					get_url [argument]
+							nmcli [argument]
+							uri [argument]
+	*argument sometimes mandatory
 	
+ARBITARY COMMAND
 	
