@@ -129,9 +129,10 @@ AD HOC COMMAND
 	COMMAND
 	ansible <argument/hosts> <argument name/sub program from argument/module> [option for argument name] [option for argument name]
 	ex.
-	1. ansible host pattern -m module [-a 'module arguments'] [-i inventory]
+	1. ansible <hosts> -m module [-a 'module arguments'] [-i inventory]
 	2. ansible all -m ping
-	3. ansible webservers -m ping
+	3. ansible <hosts> -m ping
+	4. ansible -m user -a 'name=newbie uid=4000 state=present' hostname
 	
 	MODULE CATEGORY					MODULES
 	Files Modules					copy [argument] >>> 'argument'
@@ -154,4 +155,64 @@ AD HOC COMMAND
 	*argument sometimes mandatory
 	
 ARBITARY COMMAND
+	command run speciefied as an argument to the module using -a option
+	ansible <hosts> -m command -a </pathofcomman(bin)>
+	ansible <hosts> -m shell -a
+	ex.
+	ansible mymanagehost -m command -a /usr/bin/hostname -o (output readability)
 	
+	CONFIGURATION FILE DIRECTIVES			COMMAND-LINE OPTION
+	Inventory					-i
+	Remote_user					-u
+	Become						--become,-b
+	Become_method					--become-method
+	Become_user					--become-user
+	Become_ask_pass					--ask-become-pass, -K
+	*check in ansible --help
+	
+IMPLEMENTING PLAYBOOKS
+
+	AD HOC VERSION
+	ansible -m user -a "new=newbie uid=4000 state=present"
+	
+	PLAYBOOK VERSION (YAML.yml)
+	---
+	- name: Configure important user consistently
+	  hosts: servera.lab.example.com
+	  tasks:
+	    - name: newbie exist with UID 4000
+	      user:
+	         name: newbie
+		 uid: 4000
+		 state: present
+		 
+	    - name: web server is enabled
+	      service:
+	      	name: httpd
+		enabled: true
+		
+	   - name: NTP server is enabled
+	     service:
+	        name: chronyd
+		enabled:true
+		
+	   - name: Postflix is enabled
+	     service:
+	        name: postflix
+		enabled: true
+	...
+	* - is item
+	* no - is keys-value pairs
+	* - name is like label (attribute) for purpose of the task 
+	* tab indentation is not allowed
+	
+	create custom setting of vi editor
+	add line in $HOME/.vimrc
+		autocmd FileType yaml setlocal ai ts=2 sw=2 et
+		
+RUNNING PLAYBOOK
+	RUN
+		ansible-playbok -v -vv -vvv -vvvv <configfilename.yml>
+	SYNTAX CHECK
+		ansible-playbook --syntax-check webserver.yml
+	DRY RUN (info bakal ada perubahan apa, gk langsung implementasi)
