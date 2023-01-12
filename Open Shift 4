@@ -1,0 +1,78 @@
+OPENSHIFT
+=========
+
+CLI
+INSTALL OPENSHIFT CLIENT IN DESKTOP
+	1. Download openshift client from redhat
+	2. tar xvzf <file>
+	3. echo $PATH
+	4. mv <file> to $PATH directory
+	
+LOGIN
+	LOGIN OCP only
+	1. oc login -u user1
+	LOGIN TO PROJECT
+	2. oc login <optional HTTP/HTTPS/No proxy> -u user1
+	
+PROJECT
+	1. oc new-project <project name>
+	2. oc projects
+	3. oc status
+	
+APPLICATION
+	1. oc new-app <Image link/Container link>
+	
+VIEW PODS
+	1. oc get pods -o wide
+	2. oc logs <pod name>
+	
+API-RESOURCES
+	1. oc api-resources
+	
+IMPORT-IMAGE
+	1. oc import-image my-ruby
+	
+BUILD 
+	1. oc new build <Git directory>
+		from build config
+		1. oc start-build python
+		
+TAG
+	1. oc tag ruby:latest ruby:2.0
+	
+APPLY CONFIG
+	1. oc apply -f pod.json
+	2. oc create -f pod.json
+	3. oc delete pod/<podname>
+	4. oc delete pods -l app=parksmap-katacoda
+	
+AUTOSCALE
+	1. oc autoscale deploymentconfig/parksmap-katacoda --min=2 --max=5
+
+ROLLBACK
+	1. oc rollback php (--to-version=3)
+	
+ROLLOUT
+	1. oc rollout undo deploymentconfig/php
+	
+EDIT
+	1. oc edit deploymentconfig/<podname>
+	2. OC_EDITOR="nano" oc edit deploymentconfig/<podname>
+	3. oc edit deploymentconfig/<podname> -o json
+	
+EXPOSE
+	1. oc expose service/<podname>
+	2. oc expose service/<podname> --hostname=www.my-host.com
+	
+GET
+	1. oc get pods -n default
+	2. oc get deploymentconfig/python -o json
+	
+HELP
+	1. oc help 
+	or
+	oc create --help
+	2. oc explain pods
+	
+LOGOUT
+	1. oc logout
