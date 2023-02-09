@@ -1,5 +1,32 @@
 OPENSHIFT
 =========
+COMPONENT BASED ON KUBERNETES
+	kube-proxy			= maintain network between kubernetes resources
+	kube-controller-manager		= Governs the state of the cluster
+	kube-scheduler			= Allocate pods
+	etcd				= Stores cluster data
+	kube-apiserver			= Validates and configures data for the API objects
+	kubelet				= Read container manifest (makesure container started and running)
+	kubectl				= command to interact with kube-apiserver
+	container runtime		= install podman / docker
+	container-registry		= Stores and accessed container images
+	pod				= smallest logical unit in kubernetes, contain one or more containers
+	
+FLOW
+USER >>> Controller node (API server) >>> Worker Node {1..3} (Kubelet+Pods)
+Contoller node			Compute Node			Storage/Registy
+kube-apiserver			kubelet				PV storage
+kube-scheduler			kube-proxy			Container registry
+kube-controller-manager		CONTAINER RUNTIME
+					Container
+					Pods
+----------------------------------------------------------------------------------
+Physical			Virtual				Cloud
+
+KUBERNETES RESOURCES
+	Service				= expose a running application on a set of pods
+	ReplicaSets			= maintain the constant pod number
+	Deployment			= maintain the life cycle of an application
 
 CLI
 INSTALL OPENSHIFT CLIENT IN DESKTOP
