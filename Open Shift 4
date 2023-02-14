@@ -12,6 +12,10 @@ COMPONENT BASED ON KUBERNETES
 	container-registry		= Stores and accessed container images
 	pod				= smallest logical unit in kubernetes, contain one or more containers
 	
+SCALLING
+	HORIZONTAL 			= deploy more instance
+	VERTICAL			= Upgrade spek
+	
 FLOW
 USER >>> Controller node (API server) >>> Worker Node {1..3} (Kubelet+Pods)
 Contoller node			Compute Node			Storage/Registy
@@ -45,6 +49,7 @@ PROJECT
 	1. oc new-project <project name>
 	2. oc projects
 	3. oc status
+	
 PERMISSIONS
 	1. oc adm policy add-role-to-user <role> -z <service account> -n <namespace>
 	ex :
@@ -59,6 +64,7 @@ VIEW PODS
 	2. oc logs <pod name>
 	3. oc describe pods
 	4. oc get service
+	5. oc get pods <pods name> -o yaml
 	
 SCALING THE APPLICATION
 	1. oc scale --current-replicas=1 --replicas=2 deployment/parksmap
@@ -83,7 +89,36 @@ BUILD
 	1. oc new build <Git directory>
 		from build config
 		1. oc start-build python
-		
+
+DEPLOY
+	CREATE DEPLOY
+		1. kubectl apply -f <file/filedir/adress>.yaml
+			REQ FIELD
+			1. apiVersion			= v1/v2/v3
+			2. kind				= Deployment
+			3. metadata
+				1. name
+				2. UID
+				3. namespace
+			4. spec
+		2. kubectl get deployments
+	ROLLOUT
+		3. kubectl rollout status deployment/<deployment-name>
+	REPLICASET
+		4. kubectl get rs
+		ex : [deployment]-[name]-[hash]
+		nginx-deployment-979797
+	LABEL
+		5. kubectl get pods --show-labels
+	UPDATE DEPLOYMENT
+		6. kubectl set image deployment.v1.apps/nginx-deployment nginx=nginx:1.16.1
+	DESCRIBE DEPLOYMENT
+		7. kubectl describe deployments
+	SCALING
+		8. kubectl scale deployment/<deplyoment name> --replicas=10 
+		if horizontal pos scalling enabled
+			kubectl scale deployment/<deployment name> --min=10 --max=15 --cpu-percent=80
+	
 TAG
 	1. oc tag ruby:latest ruby:2.0
 	
