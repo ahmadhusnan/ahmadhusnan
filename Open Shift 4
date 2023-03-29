@@ -61,10 +61,15 @@ APPLICATION
 	
 VIEW PODS
 	1. oc get pods -o wide -A (all namespaces)
+		i. oc get pod -A --sort-by='{.metadata.creationTimestamp}'
 	2. oc logs <pod name>
 	3. oc describe pods
 	4. oc get service
 	5. oc get pods <pods name> -o yaml
+	
+DELETE PODS
+	1. oc delete pod <name pod> -n <namespace>
+	2. ns=<NAMESPACE>; for i in $(oc get pod -n $ns | grep -i completed | awk '{print $1}'); do oc delete pod $i -n $ns;done
 	
 SCALING THE APPLICATION
 	1. oc scale --current-replicas=1 --replicas=2 deployment/parksmap
@@ -79,6 +84,24 @@ SCALING THE APPLICATION
 		3. oc rollout status deployment nationalparks
 		4. oc rollout status deployment mongodb-nationalparks
 		
+	DEPLOY MYSQL
+		1. oc new-app mysql MYSQL_USER=user1 MYSQL_PASSWORD=mypa55 MYSQL_DATABASE=testdb -l db=mysql
+	DEPLOY From Docker
+		1. oc new-app --docker-image=docker.io/indr01/nama_image:tag --name=nama_app
+	DEPLOY From Github
+		1. oc new-app https://github.com/openshift/ruby-hello-world --name=ruby-hello
+		
+ANY UID
+	1. oc create sa anyuid-nama_pod
+	   ex: oc create sa anyuid-httpd
+	oc adm policy add-scc-to-user anyuid -t anyuid-nama_pod
+	   ex: oc adm policy add-scc-to-user anyuid -z httpd
+Perintah di atas akan memberikan role "AnyUID" kepada pod dengan nama "my-pod". Anda juga dapat menggunakan perintah oc adm policy add-scc-to-group untuk memberikan role "AnyUID" kepada sekelompok pod.
+
+oc adm set sa dc/httpd anyuid-httpd
+oc logs nama_pods //melihat logs
+contoh : oc logs httpd-2-cbs29
+
 API-RESOURCES
 	1. oc api-resources
 	
@@ -128,6 +151,12 @@ APPLY CONFIG
 	3. oc delete pod/<podname>
 	4. oc delete pods -l app=parksmap-katacoda
 	
+POLICY
+	1. oc adm policy add-role-to-user <admin> <nama_user/iduser> -n <prod-mashery>
+	   for f in nama/id_user nama/id_user nama/id_user; do oc adm policy \
+	   add-role-to-user admin $f -n <prod-mashery>; done;
+	2. oc get rolebindings -owide -n <prod-mashery> | grep nama/id_usr
+	
 AUTOSCALE
 	1. oc autoscale deploymentconfig/parksmap-katacoda --min=2 --max=5
 
@@ -148,7 +177,8 @@ EXPOSE
 	
 GET
 	1. oc get pods -n default
-	2. oc get deploymentconfig/python -o json
+	2. oc get nodes
+	3. oc get deploymentconfig/python -o json
 	
 HELP
 	1. oc help 
