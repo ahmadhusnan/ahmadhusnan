@@ -1,0 +1,67 @@
+PROMETEUS (Alerting and Monitoring)
+	Data identified by metric name and key/value pairs (PromQL)
+	Time series collection happens via pull model
+	Need dedicated Prometeus sever (standalone)
+	
+METRICs
+	Numeric measurement based on application, can be time series, requests etc
+	
+INSTALL
+	tar xvfz prometheus-*.tar.gz
+	cd prometheus-*
+	./prometheus --help
+	usage: prometheus [<flags>]
+
+	The Prometheus monitoring server
+
+CONFIGURE
+	Based on YAML, comes with sample configuration (prometeus.yml)
+	ex yaml:
+	global:							>>>>>> global configuration
+ 	  scrape_interval:     15s      >>>>>> how often prome scrapte targets
+  	  evaluation_interval: 15s      >>>>>> how often prome evaluate rules
+
+	rule_files:						>>>>> rules files location
+  	  # - "first.rules"
+  	  # - "second.rules"
+
+	scrape_configs:                     >>>>>> what to monitor
+  	  - job_name: prometheus            
+        static_configs:
+          - targets: ['localhost:9090']
+
+	Apply config
+	./prometeus --config.file=prometeus.yml   >>>> open prome http://localhost:9090
+
+MONITOR
+	Table Interface
+		showing metric
+			<metric name> ex. promhttp_metric_handler_requests_total
+		showing filtered metric 
+			<metric name>{filter} ex. promhttp_metric_handler_requests_total{code="200"}
+		count metric
+			count(<metric name>) ex. count(promhttp_metric_handler_requests_total)
+	Graph Interface
+		showing rate of metric
+			rate(promhttp_metric_handler_requests_total{code="200"}[1m])
+			
+MONITORING LINUX HOST USING NODE EXPORTER
+	Installing and running
+		wget https://github.com/prometheus/node_exporter/releases/download/v*/node_exporter-*.*-amd64.tar.gz
+		tar xvfz node_exporter-*.*-amd64.tar.gz
+		cd node_exporter-*.*-amd64
+		./node_exporter
+		
+		curl metric
+		curl http://localhost:9100/metrics
+		
+	Config
+		global:
+  		  scrape_interval: 15s
+
+		scrape_configs:
+		  - job_name: node
+  			static_configs:
+  			- targets: ['localhost:9100']
+		
+	
