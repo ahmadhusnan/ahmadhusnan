@@ -1,0 +1,32 @@
+Isolated ENV in Container based on Linux Kernal :
+  1. namespaces   = isolates resources
+  2. controlgroup = limit resources
+  3. Seccomp      = how to use proccess
+  4. SELinux      = protect process from each other
+  
+Container Architecture
+  1. Image        = template for container include runtime env and all library and config file
+      ex : registry_name/usern_name/image_name:tag
+  2. Image Repo   = where image is store
+  3. Podmad       = managing container and image registries
+  
+Enterprices Need :
+  1. Easy communication between large services
+  2. Limit resources on application
+  3. Scaling application
+  4. Health Check
+  5. Gradually roll out of new release
+  
+Kontainer Orchestration (Kubernetes and Openshift)
+  Purpose
+  1. Orchestration
+  2. Scheduling
+  3. Isolation
+  Features
+  1. Service discovery and load balancing
+  2. Horizontal Scaling
+  3. Self Healing
+  4. Automated rollout and rollback
+  5. Secret and config management
+  6. Operator
+  
