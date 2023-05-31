@@ -30,3 +30,82 @@ Kontainer Orchestration (Kubernetes and Openshift)
   5. Secret and config management
   6. Operator
   
+POD
+  1. contain one or more container to be deployed
+  2. shared resources, volume, and ip address for container inside
+  3. smallest deployment unit in OpenShift
+  
+Service
+  1. Logical set of pods and access policy
+  2. Provide permanen internal IP address and Hostname
+  3. Links application components together
+  
+Labels
+  1. Used to organized, group, or select API objects
+  2. Make services to referenced to group of pods
+  3. lables written in metadata
+  4. leabes written in simple key-values
+    ex:
+    labels:
+      key1: value1
+      key2: value2
+
+Master Node
+Component
+  ETCD
+    1. ETCD is distributed key-value store for comparing desired and current state
+      - RBAC (Roles Based Access Control)
+      - Application Environtment Information
+      - Non-application user data
+  Kubernetes/Openshift API server
+    1. API end point to interact with system
+    2. API requests SSL-Encrypted and Authenticated
+    3. Autorization handled via fine-grained RBAC
+    4. Can tied with external identity management system
+      such as
+      1. LDAP
+      2. Active Directory
+      3. OAuth providers (Github / Google)
+  Scheduler
+    1. Determining pod placement based on CPU, memory worker nodes
+    2. Spread pod replicas between worker nodes
+    Scheduler Configuration
+      1. Able to use real-world topology for openshift deployment
+      2. Handles complex scenarios for scheduling workloads
+      3. Uses configuration in combination with node groups and labels (ex. zones)
+    ReplicaSet(kubernetes) / Replica Controller(OpenShift)
+      1. Ensures specified number of pod replicas
+    Deployment and DeploymentConfig
+      1. Define how to roll out new version of pods
+      2. Identity (Image name, Number of Replicas, Labe for target deployment nodes
+      3. Update pods based on Version, Strategy, Change triggers
+      4. Create ReplicaSets or Replication Controllers
+  Cluster Management Services
+  Operator Lifecycle Manager (OLM)
+    1. Is pods with operator code withinteract with Kubernetes API server
+    2. Run "reconciliation loops" to check on application service
+    3. Manage all deployed resources and the application
+    4. Act as applicitaion-specific controllers
+    5. Extend Kubernetes API with Custom Resource Definition (CRD)
+  Web Console
+  
+Services
+  1. Monitoring
+    Health and Scaling
+    1. Based on user configuration pod probes for liveness and readiness
+    2. Pod may configured to automatically scale based on CPU
+  2. Logging
+  3. OS tuning
+  4. Software-defined networking (SDN)
+  5. DNS
+    Routing Layer
+      1. Provides external clients access to application
+      2. Automated load balancing and auto routing around unhealthy pods
+      Route
+      1. Expose service by giving it externally reachable hostname
+      2. Consist of route name, service selector, and security configuration
+      Router
+      1. Multi-tier application easily deployed
+      2. Router container can run on any node host in env (wildcard DNS entry)
+      3. Ingress point for traffic
+  6. Kubelet
