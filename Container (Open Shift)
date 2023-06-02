@@ -1,5 +1,14 @@
 Isolated ENV in Container based on Linux Kernal :
   1. namespaces   = isolates resources
+    - Have own Objects : Pods, services, replication controllers
+    - Have own Policies : RBAC
+    - Constrains : Quotas for onjects (Pods, ReplicationControllers, ResourceQuotas, Services, Secrets, ConfigMaps, PersistentVolumeClaims)
+      ex: 
+        - Resource quotas : hard resource usage limits per project
+          - request 
+          - limits 
+        - ClusterResourceQuota : enumerates hard resource usage limits for users across the cluster
+    - Service accounts : Users that act automatically with access to project objects
   2. controlgroup = limit resources
   3. Seccomp      = how to use proccess
   4. SELinux      = protect process from each other
@@ -109,3 +118,137 @@ Services
       2. Router container can run on any node host in env (wildcard DNS entry)
       3. Ingress point for traffic
   6. Kubelet
+
+USER EXPERIENCE
+  Admin Prespective
+    1. Overview System
+    2. Status, Activity, Events, Inventory, Capacity, and Utilization
+    3. Resources
+    4. Logging and Metric
+    5. Advance Setting
+      ex : Updates, Operators, CRDs, role bindings, resource quota
+  Templates, Operators, and Helm for Deploy
+    1. Templates
+      - Can only create resources
+      - Cannot Manage or Delete Resource
+      - Not Associated with pod
+    2. Operators
+      - Create, manage, and delete resources
+      - Implemented by operator pods
+    3. Helm3
+      - Package of templates
+      - How application packaged
+      - How package installed
+  
+  APPLICATION DEPLOYMENT
+    1. DEVOPS and CI/CD
+      - Approach to culture, automation, and platform design
+      - Increase speed and flexibillity
+      - Improves communication and consensus
+      - Accelerates time-to-market
+    2. Topology
+          Current Technology                                  Evolving Technology
+          Platform-as-a-Service (PaaS)                        Unopinionated Container Platform
+          Complicated cluster deployment                      Cluster-managed self-deployment
+          Business value interruption for platform updates    Over-the-air updates
+          Custom configuration automation                     Immutable infrastructure
+          Infrastructure-as-a-Service (IaaS)                  Cluster-driven infrastructure
+          Simple application deployment                       OpenShift Service Mesh-driven complex topologies
+          Microservices                                       Red Hat Openshift Serverless computing
+          Container from internate                            Validated and supported runtime and middleware container
+          Bespoke infrastructure deployment consulting        DevOps consulting and RH Open Innovation Labs
+    3. Developer VS Operations
+          Developers Care                                     Operations
+          Building App                                        Deploying App
+          Automating test                                     Managing App, Infrastructure
+          Continuous Integration                              reliability
+          Performance Tuning                                  Security
+          Debugging                                           Complience
+    4. Deployments
+      - Fine-grained management over applications (Based on Deployment Configuration[DC])
+      - Template form (Templates, Helm, Kustomize)
+      - In response to deployment configuration, deployment system creates replication controller to run app
+      Term
+      Kubernetes "deployment" <==> OpenShift "deployment configuration"
+      Kubernetes "ReplicaSet" <==> Openshift "replication controller"
+    5. Features in Deployment System
+      - Deployment Configuration (DC) = Template for running App
+        - Contain :
+          - version number = incremented each time new replication controller (Kubernetes ReplicaSet) created from configuration
+          - cause of last deployed replication controller
+        - Readiness check (retries until times out if readiness check fails)
+      - Triggers that drive automated deployment in response to events
+      - Strategies to transition from previous version to new version
+      - Rollback to previous version in case of deployment failure (Manual or Automatic)
+        via REST API, CLI, or Web Console (manual)
+        via Auto rollback to last successful in failed deploy
+      - Manual replication scaling and autoscaling
+    6. Strategy
+        Rolling Deployment Strategy
+          - Performs rolling update
+          - Support life-cycle hooks for injecting code into deployment process
+          - Waits for pods to pass readiness check
+          - Defaults strategy specified in deployment configuration
+          - Steps :
+            1. Execute pre life-cycle hook (readiness checks)
+            2. Scale up new deployment by one or more pods (based on max Surge)
+            3. Scale down old deployment by one or more pods (based on max Unavailable value)
+            4. Repeat scaling until new deployment reaches desired replica count and old deployment scales to zero
+            5. Execute any post life-cycle hooks
+        Recreate Strategy
+          - Has basic rollout behaviour
+          - Supports life-cycle hooks for injecting code into deployment process
+          - Steps
+            1. Execute pre life-cycle hook
+            2. Scale down previous deployment to zero
+            3. Scale up new deployment
+            4. Execute post life-cycle hook
+    7. Continuous Integration
+      1. Workflow
+          1. Verifies build integrity
+            - Check if source code can be pulled from repository and built for deployment
+            - Build process may include compiling, packaging, configuring software
+          2. Validates test reults
+            - Runs tests created by developers in prod-like env
+            - Verifies source code not broken as side effect of commit
+          3. Check integration among multiple systems
+            - Uses integration tests to validate systems integration used by software
+          4. Identifies problems
+            - Alerts affected teams to fix problems
+      2. Benefits
+          1. Rapid feedback
+            - Status notification after build execcutes
+            - Reduces time to discover and fix new defects
+          2. Reduce risk
+            - Integrating many times a day reduces risks in projects
+            - Software health measureable using unit testing, code inspection reports
+          3. Team ownership
+            - No longer "us versus them"
+            - Everyone receives regular reports on build status
+            - Enables greater project visibility, everyone can spot trens and make effective decisions
+            - Create confidence to add features to project
+            - Everyone on board with current project health
+          4. Building deployable software
+            - Build process generates deployable software
+            - Create software that can be deployed at any time
+          5. Automated process
+            - Automating build saves time, costs, effort
+            - Process runs same every time
+            - Frees developers to do more high-value work
+      3. Best Practices
+         - Maintain code repository
+         - Automate build
+         - Make build self-testing
+         - Make sure everyone commits every day
+         - Keep build fast
+         - Test in production clone
+         - Make getting deliverables easy
+         - Make sure everyone can view build results
+    
+    
+    
+    
+    
+    
+  
+  
