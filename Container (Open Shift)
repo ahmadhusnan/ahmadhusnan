@@ -245,8 +245,100 @@ USER EXPERIENCE
          - Make getting deliverables easy
          - Make sure everyone can view build results
     
+    8. Builds and S2I
+      1. Build 
+        - Transform input parameters into resulting object (Runnable image)
+      2. Build Config
+        - Definition of entire build process
+      3. Openshift leverages Kubernetes
+        - Create containers from build images
+        - Push containers to integrated registry
+      4. Build Strategies
+        1. Container Build  >>>  podman build >>> Runnable images
+        2. Source-to-image (S2I) build >> Recomended
+          - Produces ready-to-run images
+            inject app code into container images
+          - New image incorporates base image (builder) and built source
+          - ready to use with podman run
+          - Support incremental builds (reuses previous downloaded dependencies
+          ADVANTAGES
+            - Image flexibility : can inject most container images
+            - Speed : Assemble process performs large number of complex operation without creating new layer in each step
+            - Patchability : Rebuild App consistenly
+            - Operational Efficiency : Restrict build operations and avoid accidental abuses of build system
+            - Operational Security : S2I restrict operation perform as root, run as non-root user, container build no longer by user with container previlages
+            - Ecosystem : S2i encorages shared ecosystem of images
+            - Reproducibility : Ensure image can be reproduced precisely (specific version of build tools and dependencies
+        3. Custom build >>>>>> Custom
+          - Define specific builder image (using own builder image)
+          - Plain OCI-compliant container image embedded with build process logic
+            ex:
+              Building RPMs or base container images
+              openshift/origin-custom-docker-builder image
+        4. Image Stream
+          - Comprises OCI-compliant container images identified by tags
+          - Presents single virtual view of related images
+          - New images added to associated image stream
+          - Build and deployments watch image stream
+            - Receive notification when new images added
+            - React by performing build or deployment
+        5. Pipeline build >>>>>> Jenkins
+          - Tekton-based pipelines (serverless CI/CD)
+          - Jenkins jobs enables by Pipeline plug-in (Pipeline DSL based on Groovy)
+          - Enable one script to address all steps in complex workflow
+          - Build code, orchestrate work required to drive app from commit to delivery
+          - Enable to define entire app life cycle
+          - Support CI/CD
+          - Characteristic :
+            1. Durable (even Jenkins master restart)
+            2. Pausable
+            3. Versatile (Ability to fork or join, loop, work in parallel with other pipeline)
+            4. Extensife (multiple integration)
+          - Define in Jenkinsfile
+            Embedded directly in build configuration
+            supplied in Git repo and referenced by build configuration
+       
+     9. Service Mesh
+      - Enhances deployment option for microservices
+      - CI/CD system provide minimal config info
+      - Product :
+        1. Istio : Sidecar network proxies for service-to-service
+          - Layer for srvice-to-service communication
+          - manages discovery, load balancing, failure recovery, metric, and monitoring
+          - Microservices operation support for A/B terting, canary rollout, rate limiting, access control, end-to-end auth
+          - Implemented as array of lightweight proxies injected as sidecar container
+        2. Jaeger : Tracing
+          - OpenTracing standards compliant
+          - Highly Scalable
+          - Multiple storage back end
+          - Modern web UI
+          - Cloud-native
+          - Enables Microservices observabillity
+            - Distributed context propagation
+            - Distributed transaction monitoring
+            - Root cause analysis
+            - Service depedency analysis
+            - Performance and latency optimization
+        3. Prometheus and Grafana : Telemetry
+        4. Kiali : Observability
+          - Visualize Openshift service mesh topoogy
+          - Graph : workload, app, service, version
+          - Detailed views : mesh configurations, metrics, services, workloads, runtimes
+        
     
-    
+    10. Red Hat Openshift Serverless Technology
+      - Trigger deployment on app events
+      - Knative serving
+      - Knative eventing
+      - Camel K + connectors
+      - Kafka + Strimzi
+      
+      1. Knative
+        - From container to URL within seconds
+        - Easier developer experience for kubernetes
+        - Built-in versioning, traffic split and more
+        - Simplified installation experience with Kourier
+        - Automatic TLS/SSL for App
     
     
     
