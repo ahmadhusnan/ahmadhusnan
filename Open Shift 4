@@ -35,6 +35,17 @@ KUBERNETES RESOURCES
 CLI
 INSTALL OPENSHIFT CLIENT IN DESKTOP
 	1. Download openshift client from redhat
+		download
+		- curl -LO "https://dl.k8s.io/release/$(curl -L \
+  			-s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+		checksum
+		- curl -LO "https://dl.k8s.io/$(curl -L \
+			-s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+		check
+		- echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+		install
+		- sudo install -o root -g root -m 0755 kubectl \
+  			/usr/local/bin/kubectl
 	2. tar xvzf <file>
 	3. echo $PATH
 	4. mv <file> to $PATH directory
@@ -44,28 +55,39 @@ LOGIN
 	1. oc login -u user1
 	LOGIN TO PROJECT
 	2. oc login <optional HTTP/HTTPS/No proxy> -u user1
+	3. oc cluster-info
+	4. oc api-versions
+	5. oc get clusteroperator
 	
 PROJECT
 	1. oc new-project <project name>
 	2. oc projects
 	3. oc status
 	
-PERMISSIONS
-	1. oc adm policy add-role-to-user <role> -z <service account> -n <namespace>
-	ex :
-	oc adm policy add-role-to-user view -z default -n user-getting-started
+POLICY
+	1. oc adm policy add-role-to-user <admin> <nama_user/iduser> -n <prod-mashery>
+	   for f in nama/id_user nama/id_user nama/id_user; do oc adm policy \
+	   add-role-to-user admin $f -n <prod-mashery>; done;
+	2. oc get rolebindings -owide -n <prod-mashery> | grep nama/id_usr
 	
 APPLICATION
 	1. oc new-app <Image link/Container link>
 	2. oc create route edge <name route> --service=<name service>
+	3. oc get all
+
+OPERATOR
+	1. oc get clusteroperator / oc get co
+	2. oc describe clusteroperator <operator name>
+	3. oc explain
 	
 VIEW PODS
 	1. oc get pods -o wide -A (all namespaces)
 		i. oc get pod -A --sort-by='{.metadata.creationTimestamp}'
 	2. oc logs <pod name>
-	3. oc describe pods
+	3. oc describe pods <pod name>
 	4. oc get service
 	5. oc get pods <pods name> -o yaml
+	6. oc explain
 	
 DELETE PODS
 	1. oc delete pod <name pod> -n <namespace>
@@ -144,18 +166,32 @@ DEPLOY
 	
 TAG
 	1. oc tag ruby:latest ruby:2.0
-	
+
+RESOURCE
+	Types:
+	1. pod (Pods)
+	2. svc (Services)
+	3. rs (ReplicaSet)
+	4. pv (Persitent Volumes)
+	5. pvc (Persistent Volume Claims)
+	6. cm (ConfigMaps) and Secrets
+	7. deploy (Deployment)
+	8. bc (BuildConfig)
+	9. dc (DeploymentConfig)
+	10. routes
+	every resource has .kind .apiVersion .status
+	ex:
+		pod.kind pod.api.Version .status
+	Command:
+	1. oc api-resources
+	ex:
+		oc api-resources --namespaced=true --api-group apps --sort-by name
+		
 APPLY CONFIG
 	1. oc apply -f pod.json
 	2. oc create -f pod.json
 	3. oc delete pod/<podname>
 	4. oc delete pods -l app=parksmap-katacoda
-	
-POLICY
-	1. oc adm policy add-role-to-user <admin> <nama_user/iduser> -n <prod-mashery>
-	   for f in nama/id_user nama/id_user nama/id_user; do oc adm policy \
-	   add-role-to-user admin $f -n <prod-mashery>; done;
-	2. oc get rolebindings -owide -n <prod-mashery> | grep nama/id_usr
 	
 AUTOSCALE
 	1. oc autoscale deploymentconfig/parksmap-katacoda --min=2 --max=5
