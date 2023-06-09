@@ -75,23 +75,68 @@ APPLICATION
 	2. oc create route edge <name route> --service=<name service>
 	3. oc get all
 
-OPERATOR
+OPERATOR (cluster-admin)
+	CLUSTER VERSION OPERATOR (CVO)
 	1. oc get clusteroperator / oc get co
 	2. oc describe clusteroperator <operator name>
 	3. oc explain
+	OPERATOR LIFECYCLE MANAGER (OLM)
+	addon
 	
 VIEW PODS
 	1. oc get pods -o wide -A (all namespaces)
-		i. oc get pod -A --sort-by='{.metadata.creationTimestamp}'
+		i. oc get pod -A --sort-by='{.metadata.creationTimestamp}' --show-labels
 	2. oc logs <pod name>
 	3. oc describe pods <pod name>
 	4. oc get service
 	5. oc get pods <pods name> -o yaml
+	   ex:
+	   oc get pods -o yaml | yq r - 'items[0].status.podIP'  <<<< filter [index in the item array]
+	   oc get pods \
+	   -o custom-columns=PodName:".metadata.name",\
+	   ContainerName:"spec.containers[].name",\
+	   Phase:"status.phase",\
+	   IP:"status.podIP",\
+	   Ports:"spec.containers[].ports[].containerPort"
 	6. oc explain
+	7. oc adm top pods -A --sum
+	8. oc adm top pods <pod name> -n <namespaced> --containers
+	9. oc logs pod-name -c <container name>
+	10. oc debug
+	11. oc debug job/<job name> --as-user=100000
 	
 DELETE PODS
 	1. oc delete pod <name pod> -n <namespace>
 	2. ns=<NAMESPACE>; for i in $(oc get pod -n $ns | grep -i completed | awk '{print $1}'); do oc delete pod $i -n $ns;done
+	
+CLUSTER EVENTS and ALERTS
+	EVENTS
+	1. oc get events -n <namespaces>
+	2. oc describe pod <pod name>
+	ALERTS (openshift-monitoring namespace)
+	1. oc get all -n <namespace> --show-kind
+	2. oc logs <pod alert>
+
+CLUSTER NODE STATUS
+	1. oc cluster-info
+	2. oc get nodes
+	   ex:
+	   oc get node master01 -o json | jq '.status.conditions'
+	3. oc adm node-logs --role <role name> -u <specified unit> --path=<command> --tail <baris>
+	   ex:
+	   oc adm node-logs --role master -u kubelet --path=cron --tail 1
+	4. oc debug node/<node-name> <<<< accest via kubelet
+	5. chroot /host
+	6. oc adm must-gather --dest-dir </path>
+		tar cvaf <file must gather>
+	7. oc adm inspect <specified resources> --since <last time>
+	NODE CONDITION
+	CONDITION			DESCRIPTION
+	OutOfDisk			If true, has insufficient free space for adding new pods
+	NetworkUnavailable		If true, network not correctly configured
+	NotReady			If true, one of components, such as container runtime or network is experiencing issue or not configured
+	SchedullingDisabled		If true, Pods cannot be scheduled for placement on the node
+	
 	
 SCALING THE APPLICATION
 	1. oc scale --current-replicas=1 --replicas=2 deployment/parksmap
@@ -186,7 +231,21 @@ RESOURCE
 	1. oc api-resources
 	ex:
 		oc api-resources --namespaced=true --api-group apps --sort-by name
-		
+	Condition Resource fields
+	Field			Example				Description
+	Type			ContainerReady			The Type of the condition
+	Status			False				The state of the condition
+	Reason			RequirementsNotMet		An optional field to provide extra info
+	Message			2/3 container are running	An optional textual desc for condition
+	LastTransitionTime	2023-03-07T18:05:28Z
+	API Resource field
+	Field			Example				Desc
+	apiVersion		v1				Identifier of the object schema version
+	kind			Pod				Schema Identifier
+	metadata.name		<name>				Creates a label with a name key
+	metadata.namespace	<namespace>			The namespace located
+	metadata.labels		<label>	: app: group:		Key-value pairs identifieying metadata
+	
 APPLY CONFIG
 	1. oc apply -f pod.json
 	2. oc create -f pod.json
