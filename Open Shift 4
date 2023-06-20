@@ -104,9 +104,19 @@ VIEW PODS
 	9. oc logs pod-name -c <container name>
 	10. oc debug
 	11. oc debug job/<job name> --as-user=100000
+RUN PODS
+	1. oc run <name pod> --image <imagename> --it(interaktif) --command -- <command executed> -- restart <restart option> -- env <env values>
+	ex:
+	oc run mysql --image registry.redhat.io/rhel9/mysql-80 --env MYSQL_ROOT_PASSWORD=myP@$$123
+	2. oc exec <podname> <option> -- <command>
+	ex:
+	oc exec my-app -c ruby-container -- date
+	oc exec my app -c ruby-container -it -- bash -il
+LOGS POD
+	oc logs <pod name> -l/--selector='' --tail= -c/--container= -f/--follow
 	
 DELETE PODS
-	1. oc delete pod <name pod> -n <namespace>
+	1. oc delete pod <name pod> -n <namespace> -l <label> --grace-period=
 	2. ns=<NAMESPACE>; for i in $(oc get pod -n $ns | grep -i completed | awk '{print $1}'); do oc delete pod $i -n $ns;done
 	
 CLUSTER EVENTS and ALERTS
