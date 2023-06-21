@@ -293,3 +293,25 @@ HELP
 	
 LOGOUT
 	1. oc logout
+
+CONTAINER IMAGES
+	1. ENV
+		- define the available env variable 
+	2. ARG
+		- define build-time variables
+	3. USER
+		- define the active user in container (to prevent using root)
+	4. ENTRYPOINT
+		- define the executeable to run when container started
+	5. CMD
+		- define command when start based on ENTRYPOINT
+	6. WORKDIR
+		- set of current working dir within container
+	7. METADATA
+	   EXPOSE
+		- define where to store data outside container
+	   VOLUME
+		- where to store data outside the container
+	   LABEL
+		- add a key-value pair
+		
