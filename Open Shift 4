@@ -191,6 +191,9 @@ BUILD
 		1. oc start-build python
 
 DEPLOY
+	Template (YAML manifest in openshift namespace)
+		1. oc process -f <templateYAML.yaml> -o yaml 
+			1.1. oc process -f <templateYAML.yaml> --parameters
 	CREATE DEPLOY
 		1. kubectl apply -f <file/filedir/adress>.yaml
 			REQ FIELD
@@ -202,6 +205,11 @@ DEPLOY
 				3. namespace
 			4. spec
 		2. kubectl get deployments
+		3. oc new-app --template <template name>
+			3.1. oc new-app --template <templatename> --param <ENV=Par> --image <image>
+			3.2. oc new-app <reponame>
+		4. oc create deployment <deployname> --image <image>
+		5. oc run <pod name> --image=<image> --env <Env=Par> --port 
 	ROLLOUT
 		3. kubectl rollout status deployment/<deployment-name>
 	REPLICASET
@@ -212,12 +220,15 @@ DEPLOY
 		5. kubectl get pods --show-labels
 	UPDATE DEPLOYMENT
 		6. kubectl set image deployment.v1.apps/nginx-deployment nginx=nginx:1.16.1
+		7. oc set env deployment/<deploy-name> <env=<par>>
 	DESCRIBE DEPLOYMENT
-		7. kubectl describe deployments
+		8. kubectl describe deployments
+		9. oc describe template mysql-epemeral -n openshift
 	SCALING
-		8. kubectl scale deployment/<deplyoment name> --replicas=10 
+		10. kubectl scale deployment/<deplyoment name> --replicas=10 
 		if horizontal pos scalling enabled
 			kubectl scale deployment/<deployment name> --min=10 --max=15 --cpu-percent=80
+			oc scale --replicas 5 deployment/scale
 	
 TAG
 	1. oc tag ruby:latest ruby:2.0
@@ -276,7 +287,7 @@ EDIT
 	2. OC_EDITOR="nano" oc edit deploymentconfig/<podname>
 	3. oc edit deploymentconfig/<podname> -o json
 	
-EXPOSE
+EXPOSE (Make deployment to create service)
 	1. oc expose service/<podname>
 	2. oc expose service/<podname> --hostname=www.my-host.com
 	
@@ -314,4 +325,89 @@ CONTAINER IMAGES
 		- where to store data outside the container
 	   LABEL
 		- add a key-value pair
+
+TROUBLESHOOTING TOOLS OCP
+	1. kubectl describe 	: describe resources
+	2. kubectl edit 	: edit config resources
+	3. kubectl patch	: update specific attribute or field for a resources
+	4. kubectl replace	: deploy a new instance of the resource
+	5. kubectl cp		: copy from or to container
+	6. kubectl exec		: execute command within a specified container
+	7. oc status		: display status container
+	8. oc explain		: display documentation
+	9. oc rsync		: syncronize files and dir
+	10. oc rsh		: start remote shell within a specified container
+	11. oc port-forward	: configure port forwarder
+	12. oc logs		: retrieve logs for specified container
+
+LONG-LIVED or SHORT LIVED APP
+	JOBS (one0time task)
+	1. oc create job <job-name> --image <image> -- /bin/bash -c "date"
+	2. oc create cronjob <cron-name> --image <image> --schedule="* * * * *" -- <command/date>
+	3. oc create deployment <deployment-name> --image <image> <> replicas
+	DEPLOYMENT
+	STATEFUL SETS
+
+POD and SERVICE NETWORK
+	KUBERNETES NETWORKING
+		1. Highly containet-to-container communications
+		2. Pod-to-pod communications
+		3. Pod-to-service commnunication
+		4. External-to-service communication
+	Create SVC for Deployment
+	1. oc expose deployment/<deploy-name> [--selector <selector>] [--port <port>] [--target-port <target port>] [--protocol <protocol>] [--name <name>]
+	Chcek SVC
+	1. oc get service <svc-name> -o wide
+	2. oc get endpoints
+	3. oc describe deployment === finde Selector
+	KUBERNETES DNS for SERVICE DISCOVERY
+		Process
+		1. Using DNS Operator > Deploy CoreDNS > Create svc resource > kubelet instruct pods to use CoreDNS service IP
+		Each service dynamicaly assigned by Fully Qualified Domain Name (FQDN)
+		SVC-NAME.PROJECT-NAME.svc.CLUSTER-DOMAIN
+		SVC-NAME.PROJECT-NAME
+		SVC-NAME
+		Check from the container within service
+		1. cat /etc/resolve.conf
+	KUBERNETES NETWORKING DRIVERS
+		Container Network Interface Plug-ins
+		1. OVN-Kubernetes (RHOCP 4.10)
+			1. oc get -n openshift-network-operator deployment/network-operator
+			2. oc describe network.config/cluster
+		2. Openshift SDN (RHOCP 3.x)
+		3. Kuryr 
+	SCALE and EXPOSE APPLICATIONS
+	Service Types
+		1. Cluster IP	: expose svc on cluster internal IP
+		2. Load Balancer: instruct kubernetes to interact with cloud provider, then provide externally accesible IP to APP
+		3. ExternalIP	: redirect traffic from a virtual IP addresses on a cluster node to pod. Cluster admin assign virtual IP to a anode, instruct RHOCP to set NAT rules
+		4. NodePort	: expose svc on a port on the node IP address, redirect endpoints(pods) of the service
+		5. ExternalName	: tell kubernetes that the DNS name in the externalName back the service, DNS req against Kubernetes DNS, it returns the externalName in Cannonical Name((CNAME)
+	Using Routes
+		Process
+		1. expose HTTP and HTTPS trafic, TCP app, and non-TCP trafic by only expose HTTP and TLS-based app 
+		External Request >> Ingress >> Pod >> Routes >> Service
+		Resources
+		1. Routes and Ingress traffic >> expose app to external network << Traffic convert by ingress from external to pods
+		Create
+		1. oc expose service <service name> --hostname <hostname>
+		frontend-api.apps.example.com  << <route-name>-<projectname>.<default-domain>
+		2. oc delete route myapp-route
+		Ingress
+		1.  oc create ingress ingr-sakila --rule="ingr-sakila.apps.ocp4.example.com/*=sakila-service:8080"
+		 oc create ingress ingress-name --rule=URL_route=service-name:port-number
+		2. oc delete ingress example-ingress
+	Sticky Session (cookie)
+		RHOCP auto generates the cookie for an ingress object
+		create manual
+		1. oc annotate ingress <ingr-name> ingress.kubernetes.io/affinity=cookie
+		2. oc annotate route <route-name> router.openshift.io/cookie_name=myapp
+		capture hostname
+		3. ROUTE_NAME=$(oc get route <route_name> -o jsonpath='{.spec.host}')
+		save and access routes
+		4. curl $ROUTE_NAME -k -c /tmp/cookie_jar
+		to connect again
+		5. curl $ROUTE_NAME -k -b /tmp/cookie_jar
+		
+
 		
