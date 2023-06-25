@@ -408,6 +408,22 @@ POD and SERVICE NETWORK
 		4. curl $ROUTE_NAME -k -c /tmp/cookie_jar
 		to connect again
 		5. curl $ROUTE_NAME -k -b /tmp/cookie_jar
-		
+
+	MANAGE STORAGE for APP CONFIG and DATA
+		1. CONFIGMAP
+		provide ways to inject config data into containers (Not need protection)
+		2. SECRETS
+		store sensitive information (password, sesitive config files, cred, ssh key, auth token, tls certificate)
+		encoded Base64
+		not encrypted
+		ex: echo bXl1c2VyCg== | base64 --decode
+			2.1.  oc create secret generic secret_name --from-literal key1=secret1 --from-literal key2=secret2
+			2.2. kubectl create secret generic ssh-keys --from-file id_rsa=/path-to/id_rsa --from-file id_rsa.pub=/path-to/id_rsa.pub
+			2.3. kubectl create configmap my-config --from-literal key1=config1 --from-literal key2=config2
+			2.4. oc create secret generic demo-secret --from-file user=/tmp/demo/user --from-file root_password=/tmp/demo/root_password
+			2.5 oc set volume deployment/demo --add --type secret --secret-name demo-secret --mount-path /app-secrets 
+			2.6  oc delete configmap/demo-map -n demo
+
+
 
 		
