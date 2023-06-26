@@ -424,6 +424,75 @@ POD and SERVICE NETWORK
 			2.5 oc set volume deployment/demo --add --type secret --secret-name demo-secret --mount-path /app-secrets 
 			2.6  oc delete configmap/demo-map -n demo
 
+	Persistent Data Volumes
+		1. Method :
+		- Static 	: create PV manual for cluster
+		- Dynamic	: uses storage classes to create the PV on demand
+		2. Storage Volume types :
+		- configMap 	: app configuration in external places
+		- emptyDir	: per-pod directory for scratch data
+		- hostPath	: volume mount from host node to pod (must run as previlaged)
+		- iSCSI		: Internet Small Computer System Interface is IP based provide block-level access to storage devices
+		- local		
+		- NFS		: can accessed by multiple pod at same times
+		3. Persistent Volume Claims(PVC)
+		- tied with namespaced not pods
+		- declare what an app needs, which Kubernetes porvides on a best-effort basis
+			Create PVC > update in deployment
+			3.1. oc set volumes deployment/example-application \ 1
+				--add \ 2
+				--name example-pv-storage \ 3
+				--type persistentVolumeClaim \ 4
+				--claim-mode rwo \ 5
+				--claim-size 15Gi \ 6
+				--mount-path /var/lib/example-app \ 7
+				--claim-name example-pv-claim 
+			3.2. YAML (kind: PersistentVolumeClaim)
+		4. Storage Class (Policy set)
+		Manual Reclain
+			4.1. oc delete pv <pv-name>
+			4.2 oc create pv using data from previous PV
+			4.3 Remove data on the storage asset, and delete the storage asset
+		5. Network-Attached Storage(NAS)
+		File based storage architecture using two protocol IP or TCP
+		- single access point
+		- built in security 
+		- fault-tolerance
+		6. Stateful Sets87
 
-
-		
+	HIGH AVAILABILITY APPLICATION
+	1. Restart Pods 	: configuring restart policy on pud
+		1.1. Compute Resource Requests
+		- Request Request 	: Specify minimum required compute resources necessary to schedule a pod
+		oc set resources deployment hello-world-nginx --requests cpu=10m,memory=1gi
+		- Inspecting Cluster Compute Resourcess
+		oc describe node <node name>
+		oc adm top node <cluster name>
+		oc adm top pods -n <namespace>
+		- Memory Limit		: If achieved, the process in the container killed by triggered OOM killer 
+		oc get pod <podname> -o yaml
+		- CPU Limit		: if achieved, inhibit the container, slow down the pace(CPU pressured)
+	2. Probes 		: Check when application cannot respond to request
+		2.1. Probe Endpoints
+		Function :
+		- Crash mitigation by automatically attempting to restart failing pods
+		- Failover and load balancing by sending requesst only to healthy pods
+		- Monitoring when pods are failing
+		- Scalling by determining when a new replica is ready
+		Probe Types :
+		- Readines Probes	: determine requests to accept or prevent by removing IP
+		- Liveness Probes	: called throughtout the lifetime of the application by restarting or recreatign the pod (restart policy)
+		- Startup Probes
+		Tests :
+		- HTTP GET 		: Probe > req to specified HTTP endpoint (success if code 200 or 399)
+		- Container Command 	: Command test > Oode 0 Success
+		- TCP Socket		: Cluster Open Socket to container , if connection is established
+		Parameter :
+		-Timing
+	3. Horizontal Scaling	: When load change, replicas match the load
+		- Resources Types 	: HorizontalPod Autoscaler
+		- Work Flow		: Retrieves the details metric for scalling HPA > Auto scaller collect metric from metric subsystem > computes the usage percentage > computes average accross all targeted pods > get ratio
+		oc autoscale deployment/hello --min 1 --max 10 --cpu-percent 80
+		oc get hpa
+		-
+		 
