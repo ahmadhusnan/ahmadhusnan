@@ -2,7 +2,7 @@ Isolated ENV in Container based on Linux Kernal :
   1. namespaces   = isolates resources
     - Have own Objects : Pods, services, replication controllers
     - Have own Policies : RBAC
-    - Constrains : Quotas for onjects (Pods, ReplicationControllers, ResourceQuotas, Services, Secrets, ConfigMaps, PersistentVolumeClaims)
+    - Constrains : Quotas for objects (Pods, ReplicationControllers, ResourceQuotas, Services, Secrets, ConfigMaps, PersistentVolumeClaims)
       ex: 
         - Resource quotas : hard resource usage limits per project
           - request 
@@ -17,14 +17,14 @@ Container Architecture
   1. Image        = template for container include runtime env and all library and config file
       ex : registry_name/usern_name/image_name:tag
   2. Image Repo   = where image is store
-  3. Podmad       = managing container and image registries
+  3. Podman       = managing container and image registries
   
 Enterprices Need :
   1. Easy communication between large services
   2. Limit resources on application
   3. Scaling application
   4. Health Check
-  5. Gradually roll out of new release
+  5. Gradually rollout of new release
   
 Kontainer Orchestration (Kubernetes and Openshift)
   Purpose
@@ -82,16 +82,16 @@ Component
       1. Able to use real-world topology for openshift deployment
       2. Handles complex scenarios for scheduling workloads
       3. Uses configuration in combination with node groups and labels (ex. zones)
-    ReplicaSet(kubernetes) / Replica Controller(OpenShift)
+    ReplicaSet(kubernetes) / ReplicaController(OpenShift)
       1. Ensures specified number of pod replicas
-    Deployment and DeploymentConfig
+    Deployment(Kubernetes) and DeploymentConfig(Openshift)
       1. Define how to roll out new version of pods
-      2. Identity (Image name, Number of Replicas, Labe for target deployment nodes
+      2. Identity (Image name, Number of Replicas, Label for target deployment nodes)
       3. Update pods based on Version, Strategy, Change triggers
-      4. Create ReplicaSets or Replication Controllers
+      4. Create ReplicaSets or ReplicationControllers
   Cluster Management Services
   Operator Lifecycle Manager (OLM)
-    1. Is pods with operator code withinteract with Kubernetes API server
+    1. Is pods with operator code with interact with Kubernetes API server
     2. Run "reconciliation loops" to check on application service
     3. Manage all deployed resources and the application
     4. Act as applicitaion-specific controllers
@@ -155,7 +155,7 @@ USER EXPERIENCE
           Infrastructure-as-a-Service (IaaS)                  Cluster-driven infrastructure
           Simple application deployment                       OpenShift Service Mesh-driven complex topologies
           Microservices                                       Red Hat Openshift Serverless computing
-          Container from internate                            Validated and supported runtime and middleware container
+          Container from internet                            Validated and supported runtime and middleware container
           Bespoke infrastructure deployment consulting        DevOps consulting and RH Open Innovation Labs
     3. Developer VS Operations
           Developers Care                                     Operations
@@ -208,7 +208,7 @@ USER EXPERIENCE
           1. Verifies build integrity
             - Check if source code can be pulled from repository and built for deployment
             - Build process may include compiling, packaging, configuring software
-          2. Validates test reults
+          2. Validates test results
             - Runs tests created by developers in prod-like env
             - Verifies source code not broken as side effect of commit
           3. Check integration among multiple systems
@@ -260,7 +260,7 @@ USER EXPERIENCE
             inject app code into container images
           - New image incorporates base image (builder) and built source
           - ready to use with podman run
-          - Support incremental builds (reuses previous downloaded dependencies
+          - Support incremental builds (reuses previous downloaded dependencies)
           ADVANTAGES
             - Image flexibility : can inject most container images
             - Speed : Assemble process performs large number of complex operation without creating new layer in each step
@@ -303,9 +303,9 @@ USER EXPERIENCE
       - CI/CD system provide minimal config info
       - Product :
         1. Istio : Sidecar network proxies for service-to-service
-          - Layer for srvice-to-service communication
+          - Layer for service-to-service communication
           - manages discovery, load balancing, failure recovery, metric, and monitoring
-          - Microservices operation support for A/B terting, canary rollout, rate limiting, access control, end-to-end auth
+          - Microservices operation support for A/B testing, canary rollout, rate limiting, access control, end-to-end auth
           - Implemented as array of lightweight proxies injected as sidecar container
         2. Jaeger : Tracing
           - OpenTracing standards compliant
@@ -333,7 +333,7 @@ USER EXPERIENCE
       - Camel K + connectors
       - Kafka + Strimzi
       
-      1. Knative
+      11. Knative
         - From container to URL within seconds
         - Easier developer experience for kubernetes
         - Built-in versioning, traffic split and more
