@@ -46,9 +46,9 @@ INSTALL OPENSHIFT CLIENT IN DESKTOP
 		install
 		- sudo install -o root -g root -m 0755 kubectl \
   			/usr/local/bin/kubectl
-	2. tar xvzf <file>
+	2. tar xvzf <FILE>
 	3. echo $PATH
-	4. mv <file> to $PATH directory
+	4. mv <FILE> to $PATH directory
 	
 LOGIN
 	LOGIN OCP only
@@ -60,25 +60,25 @@ LOGIN
 	5. oc get clusteroperator
 	
 PROJECT
-	1. oc new-project <project name>
+	1. oc new-project <PROJECT NAME>
 	2. oc projects
 	3. oc status
 	
 POLICY
-	1. oc adm policy add-role-to-user <admin> <nama_user/iduser> -n <prod-mashery>
+	1. oc adm policy add-role-to-user <ROLE\Name> <NAMA_USER/IDUSER> -n <NAMESPACE>
 	   for f in nama/id_user nama/id_user nama/id_user; do oc adm policy \
-	   add-role-to-user admin $f -n <prod-mashery>; done;
-	2. oc get rolebindings -owide -n <prod-mashery> | grep nama/id_usr
+	   add-role-to-user admin $f -n <NAMESPACE>; done;
+	2. oc get rolebindings -owide -n <NAMESPACE> | grep nama/id_usr
 	
 APPLICATION
-	1. oc new-app <Image link/Container link>
-	2. oc create route edge <name route> --service=<name service>
+	1. oc new-app <IMAGE LINK/CONTAINER LINK>
+	2. oc create route edge <NAMA ROUTE> --service=<NAME SERVICE>
 	3. oc get all
 
 OPERATOR (cluster-admin)
 	CLUSTER VERSION OPERATOR (CVO)
 	1. oc get clusteroperator / oc get co
-	2. oc describe clusteroperator <operator name>
+	2. oc describe clusteroperator <OPERATOR NAME>
 	3. oc explain
 	OPERATOR LIFECYCLE MANAGER (OLM)
 	addon
@@ -86,10 +86,10 @@ OPERATOR (cluster-admin)
 VIEW PODS
 	1. oc get pods -o wide -A (all namespaces)
 		i. oc get pod -A --sort-by='{.metadata.creationTimestamp}' --show-labels
-	2. oc logs <pod name>
-	3. oc describe pods <pod name>
+	2. oc logs <POD NAME>
+	3. oc describe pods <POD NAME>
 	4. oc get service
-	5. oc get pods <pods name> -o yaml
+	5. oc get pods <PODS NAME> -o yaml
 	   ex:
 	   oc get pods -o yaml | yq r - 'items[0].status.podIP'  <<<< filter [index in the item array]
 	   oc get pods \
@@ -100,46 +100,46 @@ VIEW PODS
 	   Ports:"spec.containers[].ports[].containerPort"
 	6. oc explain
 	7. oc adm top pods -A --sum
-	8. oc adm top pods <pod name> -n <namespaced> --containers
-	9. oc logs pod-name -c <container name>
+	8. oc adm top pods <POD NAME> -n <NAMESPACE> --containers
+	9. oc logs pod-name -c <CONTAINER NAME>
 	10. oc debug
-	11. oc debug job/<job name> --as-user=100000
+	11. oc debug job/<JOB NAME> --as-user=100000
 RUN PODS
-	1. oc run <name pod> --image <imagename> --it(interaktif) --command -- <command executed> -- restart <restart option> -- env <env values>
+	1. oc run <NAME POD> --image <IMAGENAME> --it(interaktif) --command -- <COMMAND EXECUTED> -- restart <RESTART OPTION> -- env <ENV VALUES>
 	ex:
 	oc run mysql --image registry.redhat.io/rhel9/mysql-80 --env MYSQL_ROOT_PASSWORD=myP@$$123
-	2. oc exec <podname> <option> -- <command>
+	2. oc exec <PODNAME> <OPTION> -- <COMMAND>
 	ex:
 	oc exec my-app -c ruby-container -- date
 	oc exec my app -c ruby-container -it -- bash -il
 LOGS POD
-	oc logs <pod name> -l/--selector='' --tail= -c/--container= -f/--follow
+	oc logs <POD NAME> -l/--selector='' --tail= -c/--container= -f/--follow
 	
 DELETE PODS
-	1. oc delete pod <name pod> -n <namespace> -l <label> --grace-period=
-	2. ns=<NAMESPACE>; for i in $(oc get pod -n $ns | grep -i completed | awk '{print $1}'); do oc delete pod $i -n $ns;done
+	1. oc delete pod <NAME POD> -n <NAMESPACE> -l <LABEL> --grace-period=
+	2. ns=<NAMESPACE>; for i in $(oc get pod -n $ns --no-header) | grep -i completed | awk '{print $1}'); do oc delete pod $i -n $ns;done
 	
 CLUSTER EVENTS and ALERTS
 	EVENTS
-	1. oc get events -n <namespaces>
-	2. oc describe pod <pod name>
+	1. oc get events -n <NAMESPACE>
+	2. oc describe pod <POD NAME>
 	ALERTS (openshift-monitoring namespace)
-	1. oc get all -n <namespace> --show-kind
-	2. oc logs <pod alert>
+	1. oc get all -n <NAMESPACE> --show-kind
+	2. oc logs <POD ALERT>
 
 CLUSTER NODE STATUS
 	1. oc cluster-info
 	2. oc get nodes
 	   ex:
 	   oc get node master01 -o json | jq '.status.conditions'
-	3. oc adm node-logs --role <role name> -u <specified unit> --path=<command> --tail <baris>
+	3. oc adm node-logs --role <ROLE NAME> -u <SPECIFIED UNIT> --path=<COMMAND> --tail <BARIS>
 	   ex:
 	   oc adm node-logs --role master -u kubelet --path=cron --tail 1
-	4. oc debug node/<node-name> <<<< accest via kubelet
+	4. oc debug node/<NODE NAME> <<<< accest via kubelet
 	5. chroot /host
-	6. oc adm must-gather --dest-dir </path>
-		tar cvaf <file must gather>
-	7. oc adm inspect <specified resources> --since <last time>
+	6. oc adm must-gather --dest-dir </PATH>
+		tar cvaf </PATH/file must gather>
+	7. oc adm inspect <SPECIFIED RESOURCES> --since <LAST TIME>
 	NODE CONDITION
 	CONDITION			DESCRIPTION
 	OutOfDisk			If true, has insufficient free space for adding new pods
@@ -149,7 +149,7 @@ CLUSTER NODE STATUS
 	
 	
 SCALING THE APPLICATION
-	1. oc scale --current-replicas=1 --replicas=2 deployment/parksmap
+	1. oc scale --current-replicas=1 --replicas=2 deployment/<DEPLOY NAME>
 	
 	DEPLOY BACK-END SERVICE(Python)
 		1. oc new-app python~https://github.com/openshift-roadshow/nationalparks-py.git --name nationalparks -l 'app=national-parks-app,component=nationalparks,role=backend,app.kubernetes.io/part-of=national-parks-app,app.kubernetes.io/name=python' --allow-missing-images=true
@@ -168,15 +168,17 @@ SCALING THE APPLICATION
 	DEPLOY From Github
 		1. oc new-app https://github.com/openshift/ruby-hello-world --name=ruby-hello
 		
-ANY UID
-	1. oc create sa anyuid-nama_pod
-	   ex: oc create sa anyuid-httpd
-	oc adm policy add-scc-to-user anyuid -t anyuid-nama_pod
-	   ex: oc adm policy add-scc-to-user anyuid -z httpd
+ANY UID (SERVICE ACCOUNT)
+	sa = service account
+	scc = security context Contraints
+	1. oc create sa anyuid-nama_pod 
+	     ex: oc create sa anyuid-httpd
+	   oc adm policy add-scc-to-user <ANYUID> -t <ANYUID-NAME_POD>
+	     ex: oc adm policy add-scc-to-user anyuid -z httpd
 Perintah di atas akan memberikan role "AnyUID" kepada pod dengan nama "my-pod". Anda juga dapat menggunakan perintah oc adm policy add-scc-to-group untuk memberikan role "AnyUID" kepada sekelompok pod.
 
 oc adm set sa dc/httpd anyuid-httpd
-oc logs nama_pods //melihat logs
+oc logs nama_pods // melihat logs
 contoh : oc logs httpd-2-cbs29
 
 API-RESOURCES
@@ -186,7 +188,7 @@ IMPORT-IMAGE
 	1. oc import-image my-ruby
 	
 BUILD 
-	1. oc new build <Git directory>
+	1. oc new build </GIT_DIRECTORY>
 		from build config
 		1. oc start-build python
 
@@ -195,7 +197,7 @@ DEPLOY
 		1. oc process -f <templateYAML.yaml> -o yaml 
 			1.1. oc process -f <templateYAML.yaml> --parameters
 	CREATE DEPLOY
-		1. kubectl apply -f <file/filedir/adress>.yaml
+		1. kubectl apply -f <FILE/FILEADDR/ADDR.yaml>
 			REQ FIELD
 			1. apiVersion			= v1/v2/v3
 			2. kind				= Deployment
@@ -205,29 +207,29 @@ DEPLOY
 				3. namespace
 			4. spec
 		2. kubectl get deployments
-		3. oc new-app --template <template name>
-			3.1. oc new-app --template <templatename> --param <ENV=Par> --image <image>
-			3.2. oc new-app <reponame>
-		4. oc create deployment <deployname> --image <image>
-		5. oc run <pod name> --image=<image> --env <Env=Par> --port 
+		3. oc new-app --template <TEMPLATE_NAME>
+			3.1. oc new-app --template <TEMPLATE_NAME> --param <ENV=PARAMETER> --image <IMAGE>
+			3.2. oc new-app <REPONAME>
+		4. oc create deployment <DEPLOY_NAME> --image <IMAGE>
+		5. oc run <POD NAME> --image=<IMAGE> --env <Env=PARAMETER> --port <PORT> 
 	ROLLOUT
-		3. kubectl rollout status deployment/<deployment-name>
+		1. kubectl rollout status deployment/<DEPLOY_NAME>
 	REPLICASET
-		4. kubectl get rs
-		ex : [deployment]-[name]-[hash]
-		nginx-deployment-979797
+		1. kubectl get rs
+			ex : [deployment]-[name]-[hash]
+		   	      kubectl get rs nginx-deployment-979797
 	LABEL
-		5. kubectl get pods --show-labels
+		1. kubectl get pods --show-labels
 	UPDATE DEPLOYMENT
-		6. kubectl set image deployment.v1.apps/nginx-deployment nginx=nginx:1.16.1
-		7. oc set env deployment/<deploy-name> <env=<par>>
+		1. kubectl set image deployment.v1.apps/nginx-deployment nginx=nginx:1.16.1
+		2. oc set env deployment/<DEPLOY_NAME> <env=<PARAMETER>>
 	DESCRIBE DEPLOYMENT
-		8. kubectl describe deployments
-		9. oc describe template mysql-epemeral -n openshift
+		1. kubectl describe deployments
+		2. oc describe template mysql-epemeral -n openshift
 	SCALING
-		10. kubectl scale deployment/<deplyoment name> --replicas=10 
+		1. kubectl scale deployment/<DEPLOY_NAME> --replicas=10 
 		if horizontal pos scalling enabled
-			kubectl scale deployment/<deployment name> --min=10 --max=15 --cpu-percent=80
+			kubectl scale deployment/<DEPLOY_NAME> --min=10 --max=15 --cpu-percent=80
 			oc scale --replicas 5 deployment/scale
 	
 TAG
@@ -245,6 +247,8 @@ RESOURCE
 	8. bc (BuildConfig)
 	9. dc (DeploymentConfig)
 	10. routes
+	11. scc (Security Context Constrains)
+	12. sa (Service Account)
 	every resource has .kind .apiVersion .status
 	ex:
 		pod.kind pod.api.Version .status
@@ -270,26 +274,26 @@ RESOURCE
 APPLY CONFIG
 	1. oc apply -f pod.json
 	2. oc create -f pod.json
-	3. oc delete pod/<podname>
+	3. oc delete pod/<PODNAME>
 	4. oc delete pods -l app=parksmap-katacoda
 	
 AUTOSCALE
-	1. oc autoscale deploymentconfig/parksmap-katacoda --min=2 --max=5
+	1. oc autoscale deploymentconfig/<DC_NAME> --min=2 --max=5
 
 ROLLBACK
 	1. oc rollback php (--to-version=3)
 	
 ROLLOUT
-	1. oc rollout undo deploymentconfig/php
+	1. oc rollout undo deploymentconfig/<DC_NAME>
 	
 EDIT
-	1. oc edit deploymentconfig/<podname>
-	2. OC_EDITOR="nano" oc edit deploymentconfig/<podname>
-	3. oc edit deploymentconfig/<podname> -o json
+	1. oc edit deploymentconfig/<PODNAME>
+	2. OC_EDITOR="nano" oc edit deploymentconfig/<PODNAME>
+	3. oc edit deploymentconfig/<PODNAME> -o json
 	
 EXPOSE (Make deployment to create service)
-	1. oc expose service/<podname>
-	2. oc expose service/<podname> --hostname=www.my-host.com
+	1. oc expose service/<PODNAME>
+	2. oc expose service/<PODNAME> --hostname=www.my-host.com
 	
 GET
 	1. oc get pods -n default
@@ -342,9 +346,9 @@ TROUBLESHOOTING TOOLS OCP
 
 LONG-LIVED or SHORT LIVED APP
 	JOBS (one0time task)
-	1. oc create job <job-name> --image <image> -- /bin/bash -c "date"
-	2. oc create cronjob <cron-name> --image <image> --schedule="* * * * *" -- <command/date>
-	3. oc create deployment <deployment-name> --image <image> <> replicas
+	1. oc create job <JOB-NAME> --image <IMAGE> -- /bin/bash -c "date"
+	2. oc create cronjob <CRON-NAME> --image <IMAGE> --schedule="* * * * *" -- <COMMAND/date>
+	3. oc create deployment <DEPLOYMENT-NAME> --image <IMAGE> --replicas
 	DEPLOYMENT
 	STATEFUL SETS
 
@@ -355,9 +359,9 @@ POD and SERVICE NETWORK
 		3. Pod-to-service commnunication
 		4. External-to-service communication
 	Create SVC for Deployment
-	1. oc expose deployment/<deploy-name> [--selector <selector>] [--port <port>] [--target-port <target port>] [--protocol <protocol>] [--name <name>]
+	1. oc expose deployment/<DEPLOY-NAME> [--selector <SELECTOR>] [--port <PORT>] [--target-port <TARGET PORT>] [--protocol <PROTOCOL>] [--name <NAME>]
 	Chcek SVC
-	1. oc get service <svc-name> -o wide
+	1. oc get service <SVC-NAME> -o wide
 	2. oc get endpoints
 	3. oc describe deployment === finde Selector
 	KUBERNETES DNS for SERVICE DISCOVERY
@@ -380,7 +384,7 @@ POD and SERVICE NETWORK
 	Service Types
 		1. Cluster IP	: expose svc on cluster internal IP
 		2. Load Balancer: instruct kubernetes to interact with cloud provider, then provide externally accesible IP to APP
-		3. ExternalIP	: redirect traffic from a virtual IP addresses on a cluster node to pod. Cluster admin assign virtual IP to a anode, instruct RHOCP to set NAT rules
+		3. ExternalIP	: redirect traffic from a virtual IP addresses on a cluster node to pod. Cluster admin assign virtual IP to a a node, instruct RHOCP to set NAT rules
 		4. NodePort	: expose svc on a port on the node IP address, redirect endpoints(pods) of the service
 		5. ExternalName	: tell kubernetes that the DNS name in the externalName back the service, DNS req against Kubernetes DNS, it returns the externalName in Cannonical Name((CNAME)
 	Using Routes
@@ -391,7 +395,7 @@ POD and SERVICE NETWORK
 		1. Routes and Ingress traffic >> expose app to external network << Traffic convert by ingress from external to pods
 		Create
 		1. oc expose service <service name> --hostname <hostname>
-		frontend-api.apps.example.com  << <route-name>-<projectname>.<default-domain>
+		frontend-api.apps.example.com  << <ROUTE-NAME>-<PROJECTNAME>.<DEFAULT-DOMAIN>
 		2. oc delete route myapp-route
 		Ingress
 		1.  oc create ingress ingr-sakila --rule="ingr-sakila.apps.ocp4.example.com/*=sakila-service:8080"
@@ -400,10 +404,10 @@ POD and SERVICE NETWORK
 	Sticky Session (cookie)
 		RHOCP auto generates the cookie for an ingress object
 		create manual
-		1. oc annotate ingress <ingr-name> ingress.kubernetes.io/affinity=cookie
-		2. oc annotate route <route-name> router.openshift.io/cookie_name=myapp
+		1. oc annotate ingress <INGR-NAME> ingress.kubernetes.io/affinity=cookie
+		2. oc annotate route <INGR-NAME> router.openshift.io/cookie_name=myapp
 		capture hostname
-		3. ROUTE_NAME=$(oc get route <route_name> -o jsonpath='{.spec.host}')
+		3. ROUTE_NAME=$(oc get route <ROUTE_NAME> -o jsonpath='{.spec.host}')
 		save and access routes
 		4. curl $ROUTE_NAME -k -c /tmp/cookie_jar
 		to connect again
@@ -417,12 +421,12 @@ POD and SERVICE NETWORK
 		encoded Base64
 		not encrypted
 		ex: echo bXl1c2VyCg== | base64 --decode
-			2.1.  oc create secret generic secret_name --from-literal key1=secret1 --from-literal key2=secret2
+			2.1.  oc create secret generic <SECRET_NAME> --from-literal <KEY1=<SECRET1>> --from-literal <KEY2=<SECRET2>>
 			2.2. kubectl create secret generic ssh-keys --from-file id_rsa=/path-to/id_rsa --from-file id_rsa.pub=/path-to/id_rsa.pub
-			2.3. kubectl create configmap my-config --from-literal key1=config1 --from-literal key2=config2
-			2.4. oc create secret generic demo-secret --from-file user=/tmp/demo/user --from-file root_password=/tmp/demo/root_password
-			2.5 oc set volume deployment/demo --add --type secret --secret-name demo-secret --mount-path /app-secrets 
-			2.6  oc delete configmap/demo-map -n demo
+			2.3. kubectl create configmap <CONFIG_NAME> --from-literal <key1=<config1>> --from-literal <key2=<config2>>
+			2.4. oc create secret generic <SECRET_NAME> --from-file user=/tmp/demo/user --from-file root_password=/tmp/demo/root_password
+			2.5 oc set volume deployment/demo --add --type secret <TYPE_SECRET> --secret-name <SECRET_NAME> --mount-path </MOUNTDIR> 
+			2.6  oc delete configmap/<CONFIGMAP_NAME> -n <NAMESPACES>
 
 	Persistent Data Volumes
 		1. Method :
@@ -439,19 +443,19 @@ POD and SERVICE NETWORK
 		- tied with namespaced not pods
 		- declare what an app needs, which Kubernetes porvides on a best-effort basis
 			Create PVC > update in deployment
-			3.1. oc set volumes deployment/example-application \ 1
+			3.1. oc set volumes deployment/<DEPLOY_NAME> \ 1
 				--add \ 2
-				--name example-pv-storage \ 3
-				--type persistentVolumeClaim \ 4
-				--claim-mode rwo \ 5
-				--claim-size 15Gi \ 6
-				--mount-path /var/lib/example-app \ 7
-				--claim-name example-pv-claim 
+				--name <NAME_PV> \ 3
+				--type <persistentVolumeClaim> \ 4
+				--claim-mode <rwo> \ 5
+				--claim-size <15Gi> \ 6
+				--mount-path </var/lib/example-app> \ 7
+				--claim-name <example-pv-claim> 
 			3.2. YAML (kind: PersistentVolumeClaim)
 		4. Storage Class (Policy set)
-		Manual Reclain
-			4.1. oc delete pv <pv-name>
-			4.2 oc create pv using data from previous PV
+		Manual Reclaim
+			4.1 oc delete pv <PV_NAME>
+			4.2 oc create pv <using data from previous PV>
 			4.3 Remove data on the storage asset, and delete the storage asset
 		5. Network-Attached Storage(NAS)
 		File based storage architecture using two protocol IP or TCP
@@ -461,18 +465,18 @@ POD and SERVICE NETWORK
 		6. Stateful Sets87
 
 	HIGH AVAILABILITY APPLICATION
-	1. Restart Pods 	: configuring restart policy on pud
+	1. Restart Pods (configuring restart policy on pod)
 		1.1. Compute Resource Requests
 		- Request Request 	: Specify minimum required compute resources necessary to schedule a pod
-		oc set resources deployment hello-world-nginx --requests cpu=10m,memory=1gi
+			oc set resources deployment <DEPLOY_NAME> --requests <cpu=10m,memory=1gi>
 		- Inspecting Cluster Compute Resourcess
-		oc describe node <node name>
-		oc adm top node <cluster name>
-		oc adm top pods -n <namespace>
+			oc describe node <NODE_NAME>
+			oc adm top node <CLUSTER_NAME>
+			oc adm top pods -n <NAMESPACE>
 		- Memory Limit		: If achieved, the process in the container killed by triggered OOM killer 
-		oc get pod <podname> -o yaml
+			oc get pod <podname> -o yaml
 		- CPU Limit		: if achieved, inhibit the container, slow down the pace(CPU pressured)
-	2. Probes 		: Check when application cannot respond to request
+	2. Probes (Check when application cannot respond to request)
 		2.1. Probe Endpoints
 		Function :
 		- Crash mitigation by automatically attempting to restart failing pods
@@ -488,11 +492,11 @@ POD and SERVICE NETWORK
 		- Container Command 	: Command test > Oode 0 Success
 		- TCP Socket		: Cluster Open Socket to container , if connection is established
 		Parameter :
-		-Timing
-	3. Horizontal Scaling	: When load change, replicas match the load
+		- Timing
+	3. Horizontal Scaling (When load change, replicas match the load)
 		- Resources Types 	: HorizontalPod Autoscaler
 		- Work Flow		: Retrieves the details metric for scalling HPA > Auto scaller collect metric from metric subsystem > computes the usage percentage > computes average accross all targeted pods > get ratio
-		oc autoscale deployment/hello --min 1 --max 10 --cpu-percent 80
-		oc get hpa
-		-
+			oc autoscale deployment/hello --min 1 --max 10 --cpu-percent 80
+			oc get hpa
+		
 		 
