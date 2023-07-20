@@ -19,15 +19,27 @@ Installation
 		5. podman ps --all --format=json
 		6. podman --rm <imagename>
 		7. podman port
-
-	BUILD IMAGE
-		1. podman build -t <service name> <https://github>
+	BASE IMAGE (UBI)
+	Standard 	= include DNF, systemd, gzip and tar
+	Init		= eases running multiple applications within a single container by managing them with systemd
+	Minimal		= uses microdnf package
+	Micro		= not include package manager
 	
 	PULL IMAGES
+		/etc/containers/registries.conf
+		unqualified-search-registries = ['registry.redhat.io', 'docker.io'] 
+		or
+		location (~/.local/share/containers)		="docekr.io"
+		blocked=true
 		1. podman pull <image:tag>
 		TAG IMAGE
 			1. podman tag <registry/name> <new/name>
-	
+
+	CREDENTIALS
+	registry.redhat.io 		= login
+	1. podman login registry.redhat.io
+	registry.access.redhat.com 	= no auth
+	location (encoded base64)	= ${XDG_RUNTIME_DIR}/containers/auth.json
 	PUSH IMAGES
 		1. podman login <registry> ex. docker.io quay.io
 		2. podman push <new/name>
@@ -44,7 +56,48 @@ Installation
 		1. podman load < <name.tar>
 		compressed
 		2. gunzip -c <name.tar.gz> | podman load
-	
+
+	BUILD IMAGES
+	1. podman build -t <service name> <https://github>
+	2. Uses ContainerFile
+		FROM <registry base image>
+		WORKDIR <Working dir>
+		COPY <Copy file from host to working container dir>
+		ADD <like copy but it unpaced .tar or linkfile>
+		RUN <run command and commits the resulting state to new layer (STEP)>
+		ENTRYPOINT <Sets the executable to run when started>
+		CMD <command when the container is started ex. bash>
+		USER <state user>
+		LABEL <add key-value pair to metadata>
+		EXPOSE <add port bind for container>
+		ENV <define env for container>
+		ARG <define build-time variable>
+		Volume <define volume store data outside the container>
+			EXAMPLE
+			# This is a comment line 1
+			FROM        registry.redhat.io/ubi8/ubi:8.6 2
+			LABEL       description="This is a custom httpd container image" 3
+			RUN         yum install -y httpd 4
+			EXPOSE      80 5
+			ENV         LogLevel "info" 6
+			ADD         http://someserver.com/filename.pdf /var/www/html 7
+			COPY        ./src/   /var/www/html/ 8
+			USER        apache 9
+			ENTRYPOINT  ["/usr/sbin/httpd", "param2", "param3"] 10
+			CMD         ["-D", "FOREGROUND"] 11
+
+			# First stage
+			FROM registry.access.redhat.com/ubi8/nodejs-14:1 as builder 1
+			COPY ./ /opt/app-root/src/
+			RUN npm install
+			RUN npm run build 2
+
+			# Second stage
+			FROM registry.access.redhat.com/ubi8/nodejs-14-minimal:1 3
+			COPY --from=builder /opt/app-root/src/ /opt/app-root/src/ 4
+			EXPOSE 8080
+			CMD node dist/index.js	
+
 	EXEC PODS
 		1. podman exec <option>container <container>
 		option : --env --interactive --tty(pseudoterminal)  --latest(container)
@@ -80,7 +133,7 @@ Installation
 			2. podman search registry/container_image
 			ex : podman search registry.redhat.io/redis
 		STOP and REMOVE Container
-			1. podman stop <container ID>
+			1. podman stop <contaner ID>
 			2. podman rm <container ID>
 			
 		RUNNING CONTAINER
