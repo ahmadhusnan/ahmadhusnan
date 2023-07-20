@@ -1,4 +1,6 @@
 PODMAN
+======
+Containers : encapsulated process that includes runtimes dependencies for the program (own libraries)
 
 Preparation of Ports
 sudo firewall-cmd --add-port=6443/tcp --permanent
@@ -13,8 +15,11 @@ Installation
 		1. podman search <image>
 		2. podman images
 		3. podman inspect <Image ID or Repository>
-		5. podman top <ID>
-	
+		4. podman top <ID>
+		5. podman ps --all --format=json
+		6. podman --rm <imagename>
+		7. podman port
+
 	BUILD IMAGE
 		1. podman build -t <service name> <https://github>
 	
@@ -39,15 +44,31 @@ Installation
 		1. podman load < <name.tar>
 		compressed
 		2. gunzip -c <name.tar.gz> | podman load
-		
+	
+	EXEC PODS
+		1. podman exec <option>container <container>
+		option : --env --interactive --tty(pseudoterminal)  --latest(container)
+		ex
+		podman exec httpd cat /etc/httpd/conf/httpd.conf
+
+	COPY FILES FROM CONTAINER OUT
+		1. podman cp <podname>:/dir /targetdir
+
 	RUNNING IMAGES
 		1. podman run <image ID>
 		in background
 		2. podman run -d <image ID>
 		exposed port
-		3. podman run -dit -p 80:80 <image ID>
+		3. podman run -dit -p 80:80 <image ID> = ip 0.0.0.0
+		   podman run -dit -p 127.0.0.1:8075:80 <imageID>
+		4. podman port <imageID> 
+		   podman port --all
+		5. podman inspect my-app \
+			 -f '{{.NetworkSettings.Networks.apps.IPAddress}}'
 		ROOTLESS by using -u
-		4. podman run -it -u <user> <image> /bin/bash
+		7. podman run -it -u <user> <image> /bin/bash
+		state env
+		8. podman run -e NAME='Red Hat' <Image> printenv NAME
 		
 	REMOVE IMAGES
 		1. podman rmi <image ID>
@@ -91,3 +112,17 @@ Installation
 			Execute pod
 				1. podman exec -it <ID>  /bin/bash
 			 
+	PODMAN NETWORK
+	1. podman network create
+	ex
+		podman network create example-net
+	2. podman network ls
+	3. podman network inspect
+	4. podman network rm
+	5. podman network prune
+	6. podman network connect
+	ex
+		podman run -d --name my-container --net example-net <container-image:latest>
+		podman run -d --name double-connector --net postgres-net,redis-net <contianer-image:latest>
+		curl <http://nginx-host:8080>
+	
