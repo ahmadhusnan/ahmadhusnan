@@ -2,10 +2,25 @@ PODMAN
 ======
 Containers : encapsulated process that includes runtimes dependencies for the program (own libraries)
 
+Rootless Podman depndecnies:
+cgroupv2 (runc)
+slipr4nets (unprevilage namespaces)
+fuse-overlayfs (Copy-On-Write (COW)) *Minimize Layer
 Preparation of Ports
 sudo firewall-cmd --add-port=6443/tcp --permanent
 sudo firewall-cmd --reload
-
+	1. ContainerFIle
+	RUN adduser --no-create-home --system --shell /usr/sbin/nologin python-server
+	USER python-server
+	2. CHeck
+	cat /etc/subuid /etc/subgid
+	3. Generate SubID
+	sudo usermod --add-subuids 1000000-165536 --add-subgids 1000000165536
+	4. Use Previledge Utilities
+	sudo sysctl -w "net.ipv4.ip_unpriviledged_port_start=79"
+	sudo sysctl -w "net.ipv4.ping_group_range=0 2000000"
+	5. Change Permission in Container
+	podman unshare chgrp -R <gid> </dir>
 Installation
 	1. yum -y install podman
 
@@ -178,4 +193,17 @@ Installation
 		podman run -d --name my-container --net example-net <container-image:latest>
 		podman run -d --name double-connector --net postgres-net,redis-net <contianer-image:latest>
 		curl <http://nginx-host:8080>
-	
+
+	PODMAN FILE SYSTEM
+	MOUNT
+	1. --volume /pathonhost/:/pathincontainer:option
+	ex:
+	podman run -p 8080:8080 --volume /www:/var/www/html:ro <image>
+	2. --type=TYPE,source=/pathonhost,destination=/pathoncontainer
+		TYPE=bind, volume, tmpfs
+	CREATE
+	1. podman volume create <name>
+	2. podman volume inspect <name>
+	3. podman volume import <volume name> <file>
+	DIRECTORY
+	1. Rootless 0 $HOME/.local/share/containers/storage/volumes
