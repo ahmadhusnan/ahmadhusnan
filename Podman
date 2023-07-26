@@ -207,3 +207,61 @@ Installation
 	3. podman volume import <volume name> <file>
 	DIRECTORY
 	1. Rootless 0 $HOME/.local/share/containers/storage/volumes
+
+	DATABASE
+	Stateful Database Container (maintain state)
+	1. Challange :
+		- Potability
+		- Scalability
+		- Availibility
+	   Need :
+		- Sample data > testing env (feature check) > production (update data realtime)
+	2. How To :
+		- VOLUME instruction in ContainerFile = Directory database
+		- MOUNT Dir to named volume
+		- Creata Database network
+	3. Setting Database :
+		- Database Container with Data-loading Features
+		  Pre-made database container images that configure dir where database create and load data (at container start)
+		  Can migrate data from a running database (export feature)
+		- Load Data with a Database Client
+		  Must provide database client with a file containing data to load and config to connect to db server
+			- Add data to running container
+			  podman cp SQL_FILE TARGET_DB_CONTAINER:CONTAINER_PATH
+			  ex
+			  podman exec -it DATABASE_CONTAINER psql -U DATABASE_USER -d DATABASE_NAME -f CONTAINER_PATH/SQL_FILE
+			  podman run -it --rm -e PGPASSWORD=DATABASE_PASSWORD -v ./SQL_FILE:/tmp/SQL_FILE:Z --network DATABASE_NETWORK registry.redhat.io/rhel8/postgresql-12:1-113 psql -U DATABASE_USER -d DATABASE_NAME -f CONTAINER_PATH/SQL_FILE
+	4. Export Database Data
+	   Use database backup command present in the database container image
+		MySQL 		= mysqldump
+		PostgreSQL 	= pg_dump
+		podman exec POSTGRESQL_CONTAINER pg_dump -Fc DATABASE -f BACKUP_DUMP
+		podman cp SQL_FILE TARGET_DB_CONTAINER:CONTAINER_PATH
+		podman exec persisting-pg13 pg_restore -d rpi-store /tmp/db_dump
+	
+	TROUBLESHOOT
+	1. POD STATE
+	podman ps -a
+	podman logs <podname>
+	2. NETWROKEING
+		- PORT
+			podman port 
+			(check from app perspective)
+			podman exec -it <podname> ss -pant
+			-p = procces using socket
+			-a = all connection
+			-n = display IP addresses
+			-t = display TCP sockets
+			(check Container PID)
+			podman inspect <pod> --format '{{.State.Pid}}'
+			sudo nsenter -n -t <Container PID> -ss -pant
+		- NETWORK ISSUE (not define)
+			podman inspect <Pod> --format '{{.NetworkSettings.Networks}}' > (show map not port)
+		- RESOLUTION ISSUE
+			podman network inspect <network name>
+	3. BIND MOUNTS (SELinux)
+	wrong command 	: podman run -p 8080:8080 --volume /www:/var/www/html <image name>
+	permission check: podman unshare ls -l /www
+	SELinux check	: ls -Zd /www
+		option -z = lets different containers share access to a bind mount
+		       -Z = provide container with exclusive access to the bind mount
