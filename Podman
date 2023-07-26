@@ -264,4 +264,69 @@ Installation
 	permission check: podman unshare ls -l /www
 	SELinux check	: ls -Zd /www
 		option -z = lets different containers share access to a bind mount
+
+	REMOTE DEBUGGING CONTAINERS
+	1. Without Container
+	   	- Attach breakpoint that stop program execution
+		- Step through individual application instruction
+		- Inspect and modify variables
+		- Evaluates expression
+	2. Debugging within container
+		- Debug port need to be forwarded
+		- Listen local connection
+	3. Live Updating Code
+		- mount code from host by using bind mount when debugging
+	4. VSCodium
+		- Builtin debugger Code Editor
 		       -Z = provide container with exclusive access to the bind mount
+
+	MULTI-CONTAINER APP COMPOSE
+	1. Podman compose
+	   open-source tool that you can use to run Compose files (yaml)
+	   ex
+	   version: '3'
+		services:
+  		orders: 1
+    		  image: quay.io/user/python-app 2
+    		  ports:
+    		  - 3030:8080 3
+    		environment:
+      		  ACCOUNTS_SERVICE: http://accounts 4
+	2. Usage
+		- Development env (app + databases + cache in single file deployment)
+		- Automated testing (pipeline)
+	3. Section in Compose file
+		- version = version Compose
+		- services = define the container used (can include command)
+			- mock_service : fixed responses as configuration files in your repo, bind mount these file using path
+				volumes:
+     				 - ./mocks/SERVICE/ENDPOINTS:_TARGET_DIRECTORY_:Z
+     				 - ./mocks/SERVICE/FIXED_RESPONSES:_TARGET_DIRECTORY_:Z
+		- network = define network container
+			ex
+			version: "3.9"
+			services:
+ 			 frontend:
+   			 image: quay.io/user/frontend
+  			  networks: 1
+ 			     - app-net
+ 			  ports:
+     			  - "8082:8080"
+ 			 backend:
+   			 image: quay.io/user/backend
+   			 networks: 2
+     			 - app-net
+     			 - db-net
+ 			 db:
+   			 image: registry.redhat.io/rhel8/postgresql-13
+   			 environment:
+     			   POSTGRESQL_ADMIN_PASSWORD: redhat
+   			 networks: 3
+     			 - db-net
+
+			networks: 4
+ 			 app-net: {}
+ 			 db-net: {}
+		- volumes = specifies volumes by container
+		- configs = define configs
+		- secret = define secrets used by containers
