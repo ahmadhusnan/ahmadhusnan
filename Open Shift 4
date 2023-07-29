@@ -498,5 +498,20 @@ POD and SERVICE NETWORK
 		- Work Flow		: Retrieves the details metric for scalling HPA > Auto scaller collect metric from metric subsystem > computes the usage percentage > computes average accross all targeted pods > get ratio
 			oc autoscale deployment/hello --min 1 --max 10 --cpu-percent 80
 			oc get hpa
-		
-		 
+
+	PRODUCTION (multi tenancy and security, operator)
+	Imperative 	= command based
+	Declarative	= manifest based JSON & YAML
+	1. Workflow
+		kubectl create -f <manifest.yml/url yml> --recursive=true/-R --save-config
+		kubectl apply -f <manifest.yml/url yml> *after --save-config
+	2. YAML Validation (Testing)
+		--dry-run=server	= submit server-side request without persisting the resources
+		--validate=true		= validate the input
+	3. Comparing Resources
+		kubectl diff -f <manifest.yml>
+	4. Update Consideration
+		not every change restart the pod, secrets and configmaps only happen in startup
+		oc delete pod <pod name>
+		oc rollout restart deploymeng <deployment name>
+	5. 
