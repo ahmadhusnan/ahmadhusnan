@@ -196,6 +196,14 @@ DEPLOY
 	Template (YAML manifest in openshift namespace)
 		1. oc process -f <templateYAML.yaml> -o yaml 
 			1.1. oc process -f <templateYAML.yaml> --parameters
+		2. oc get template -n openshift
+		3. oc process --parameters <template name> -n openshift
+		3. oc new-app --template=<template name>
+		4. oc porcess -f <template name> > <name manifest.yaml>
+		5. oc process <name yaml> --param-file=<param.env> > <manifest.yaml>
+		6. oc process <name> --param-file=<param.env> | oc apply -f .
+		7. oc create -f (update template to specific project)
+		
 	CREATE DEPLOY
 		1. kubectl apply -f <FILE/FILEADDR/ADDR.yaml>
 			REQ FIELD
@@ -212,6 +220,10 @@ DEPLOY
 			3.2. oc new-app <REPONAME>
 		4. oc create deployment <DEPLOY_NAME> --image <IMAGE>
 		5. oc run <POD NAME> --image=<IMAGE> --env <Env=PARAMETER> --port <PORT> 
+	
+	HELM CHART
+	
+
 	ROLLOUT
 		1. kubectl rollout status deployment/<DEPLOY_NAME>
 	REPLICASET
@@ -514,4 +526,138 @@ POD and SERVICE NETWORK
 		not every change restart the pod, secrets and configmaps only happen in startup
 		oc delete pod <pod name>
 		oc rollout restart deploymeng <deployment name>
-	5. 
+
+	KUSTOMIZE
+	Configuration management tool to make declarative changes to app configurations and components and oreserve the original YAML
+	(kustomization.yaml at rooot)
+	Patch customization
+	1. Command
+		- kubectl kustomize overlay/production
+		- kubectl apply -k overlay/production
+		- oc delete kuztomize overlay/production
+	2. Structure Base directory
+		base
+		├── configmap.yaml
+		├── deployment.yaml
+		├── secret.yaml
+		├── service.yaml
+		├── route.yaml
+		└── kustomization.yaml
+			ex
+			apiVersion: kustomize.config.k8s.io/v1beta1
+			kind: Kustomization
+			resources:
+			- configmap.yaml
+			- deployment.yaml
+			- secret.yaml
+			- service.yaml
+			- route.yaml
+	3. Overlays declarative artifacts, patches
+		base
+		----
+		kustomization.yaml + resources
+			development
+			-----------
+			kustomization.yaml (refers to base)
+			testing
+			-------
+			kustomization.yaml (refers to base + pathces)
+			prod
+			----
+			kustomization.yaml (refers to base + patch.yaml)
+			ex.
+			[user@host frontend-app]$ tree
+			base
+			├── configmap.yaml
+			├── deployment.yaml
+			├── secret.yaml
+			├── service.yaml
+			├── route.yaml
+			└── kustomization.yaml
+			overlay
+			└── development
+  			  └── kustomization.yaml
+				apiVersion: kustomize.config.k8s.io/v1beta1
+				kind: Kustomization
+				namespace: dev-env
+				bases:
+				- ../../base
+			└── testing
+    			  └── kustomization.yaml
+				apiVersion: kustomize.config.k8s.io/v1beta1
+				kind: Kustomization
+				namespace: test-env
+				patches: 1
+				- patch: |-
+    					- op: replace 2
+      					  path: /metadata/name
+      					  value: frontend-test
+  				  target: 3
+    				    kind: Deployment
+    				    name: frontend
+				- patch: |- 4
+    					- op: replace
+      					path: /spec/replicas
+      					value: 15
+  				  target:
+    					kind: Deployment
+    					name: frontend
+				bases: 5
+				- ../../base
+				commonLabels: 6
+  				  env: test
+			└── production
+  			  ├── kustomization.yaml
+  			  └── patch.yaml
+				apiVersion: kustomize.config.k8s.io/v1beta1
+				kind: Kustomization
+				namespace: prod-env
+				patches: 1
+				- path: patch.yaml 2
+				  target: 3
+				    kind: Deployment
+				    name: frontend
+				  options:
+				    allowNameChange: true 4
+				bases: 5
+				- ../../base
+				commonLabels: 6
+				  env: prod
+					{patch.yaml reference}
+					apiVersion: apps/v1
+					kind: Deployment
+					metadata:
+					  name: frontend-prod 1
+					spec:
+					  replicas: 5 2
+	4. Fitures
+		- configMapGenerator
+			configMapGenerator:
+			- name: configmap-1  1
+ 			 files:
+			    - application.properties
+			- name: configmap-2  2
+			  envs:
+			    - configmap-2.env
+			- name: configmap-3  3
+			  literals:
+			    - name="configmap-3"
+			    - description="literal key-value pair"
+		- secretGenerator
+			secretGenerator:
+			- name: secret-1  1
+			  files:
+			    - password.txt
+			- name: secret-2  2
+			  envs:
+			    - secret-mysql.env
+			- name: secret-3  3
+			  literals:
+			    - MYSQL_DB=mysql
+			    - MYSQL_PASS=root
+		- generatorOptions
+			disableNameSuffixHash: true
+  			labels:
+ 			   type: generated-disabled-suffix
+			annotations:
+ 			   note: generated-disabled-suffix
