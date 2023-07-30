@@ -222,7 +222,39 @@ DEPLOY
 		5. oc run <POD NAME> --image=<IMAGE> --env <Env=PARAMETER> --port <PORT> 
 	
 	HELM CHART
-	
+	- Package that describes a set of Kubernetes resources that you can deploy. 
+	- Helm charts define values that you can customize when deploying an application. 
+	- A chart is a collection of files with a defined structure
+	- instead of specifying the image for a deployment, charts can use user-provided values for the image. 
+	- Helm charts can contain hooks that Helm executes at different points during installations and upgrades. 
+	- Hooks can automate tasks for installations and upgrades. 
+	- With hooks, Helm charts can manage more complex applications than purely manifest-based processes.
+	1. Structure (Chart, Release, Versions)
+		sample/
+		├── Chart.yaml 1
+		├── templates 2
+		|   |── example.yaml
+		└── values.yaml 3
+	2. Command
+		helm show chart <chartname>
+		helm show values <chartname>
+	3. Installing
+		helm install <release-name> <chartreference>  --dry-run  --values values.yaml
+		*note
+			To install a chart, you must decide on the following parameters:
+				The deployment target namespace
+				The values to override
+				The release name
+	4. Release
+		helm list --all-namespaces or -n 
+	5. Upgrade
+		helm upgrade
+	6. Rollback
+		helm history <relese name>
+		helm rollback <releasename> <revision>
+	7. Helm Repositories ( ~/.config/helm/repositories.yaml)
+		helm repo add <name chart> <https://url.chart/>
+		helm search repo
 
 	ROLLOUT
 		1. kubectl rollout status deployment/<DEPLOY_NAME>
@@ -661,3 +693,96 @@ POD and SERVICE NETWORK
  			   type: generated-disabled-suffix
 			annotations:
  			   note: generated-disabled-suffix
+
+	AUTHENTICATION AND AUTHORIZATION (HTPasswd & RBAC)
+	1. Component:
+		- user
+		- Identity
+		- Service Account
+		- Group
+		- Role
+	2. Process :
+		- Authentication (who is previlage)
+		- Authorization (what is previlage) (Role-based Access Control)
+	3. Auth Method :
+		- OAuth access token
+		- X.509 client certificates
+	4. Auth Operator
+		- runs an OAuth server grant access token to user but validate first
+	5. Identity Providers
+		- HTPasswd 	= validates user & password againts secret produced by command htpasswd
+			Only a cluster administrator can change the data inside the HTPasswd secret. Regular users cannot change their own passwords.
+			most production environments require a more powerful identity provider that integrates with the organization's identity management system.
+				apiVersion: config.openshift.io/v1
+				kind: OAuth
+				metadata:
+				  name: cluster
+				spec:
+				  identityProviders:
+				  - name: my_htpasswd_provider 1
+				    mappingMethod: claim 2
+				    type: HTPasswd
+				    htpasswd:
+				      fileData:
+				        name: htpasswd-secret 3
+			command
+				oc get oauth cluster -o yaml > oauth.yaml
+				oc replace -f oauth.yaml
+			htpasswd comand (install httpd-tools)
+				htpasswd -c(create) -B -b(add/update) /tmp/htpasswd student redhat123
+				htpasswd -D /tmp/htpasswd student *delete cred
+				oc create secret generic htpasswd-secret --from-file htpasswd=/tmp/htpasswd -n openshift-config
+				oc extract secret/htpasswd-secret -n openshift-config --to /tmp/ --confirm
+				oc set data secret/htpasswd-secret --from-file htpasswd=/tmp/htpasswd -n openshift-config (redeploy openshift-authentication)
+				watch oc get pods -n openshift-authentication
+				oc get identities | grep manager
+				oc delete identity my_htpasswd_provider:manager
+				oc adm policy add-cluster-role-to-user cluster-admin student
+		- Keystone 	= enables shared authentication with OpenStack Keystone v3 server
+		- LDAP		= validates user & password against LDAPv3 server using simple bind authentication
+		- Github 	= validate usernames and passwords against GitHub or the GitHub Enterprise OAuth authentication server.
+		- OpenID Connect= OpenID Connect identity provider by using an Authorization Code Flow.
+	6. Auth Cluster Administrator (in kubeconfig)
+		- embeds an X.509 client certificate that never expires
+			command
+			INFO Run 'export KUBECONFIG=root/auth/kubeconfig' to manage the cluster with 'oc'.
+			export KUBECONFIG=/home/user/auth/kubeconfig
+			oc get nodes
+			or
+			oc --kubeconfig /home/user/auth/kubeconfig get nodes
+		- authenticate as the kubeadmin virtual user. Successful authentication grants an OAuth access token.
+			- kubeadmin in kube-system namespaces (secret)
+			command
+			oc get secret kubeadmin -n kube-system
+			oc delete secret kubeadmin -n kube-system
+	7. RBAC (Role-based access control)
+		RBAC Object	Description
+		---------------------------
+		Rule		Allowed actions for objects or groups of objects.
+		Role		Sets of rules. Users and groups can be associated with multiple roles.
+		Binding		Assignment of users or groups to a role.
+		Role Level	Description
+		---------------------------
+		Cluster role	Users or groups with this role level can manage the OpenShift cluster.
+		Local role	Users or groups with this role level can manage only elements at a project level.
+		1. command
+			oc adm policy add-cluster-role-to-user <cluster-role> <username>
+			oc policy add-role-to-user <role-name> <username> -n <project>
+			oc adm policy remove-cluster-role-from-user <cluster-role> <username>
+			 oc adm policy who-can delete user
+		2. role
+			Default roles		Description
+			admin			Users with this role can manage all project resources, including granting access to other users to access the project.
+			basic-user		Users with this role have read access to the project.
+			cluster-admin		Users with this role have superuser access to the cluster resources. These users can perform any action on the cluster, and have full control of all projects.
+			cluster-status		Users with this role can get cluster status information.
+			edit			Users with this role can create, change, and delete common application resources on the project, such as services and deployments. These users cannot act on management resources such as limit ranges and quotas, and cannot manage access permissions to the project.
+			self-provisioner	Users with this role can create projects. It is a cluster role, not a project role.
+			view			Users with this role can view project resources, but cannot modify project resources.
+		3. User Type
+			- regular user
+			- system user 		= System user names start with a system: prefix, such as system:admin, system:openshift-registry, and system:node:node1.example.com.
+			- service accounts	= System account user names start with a system:serviceaccount:namespace: prefix, such as system:serviceaccount:default:deployer and system:serviceaccount:accounting:builder.
+		4. Group Management
+			oc adm groups new lead-developers
+			oc adm groups add-user lead-developers user1
