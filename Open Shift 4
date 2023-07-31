@@ -11,11 +11,12 @@ COMPONENT BASED ON KUBERNETES
 	container runtime		= install podman / docker
 	container-registry		= Stores and accessed container images
 	pod				= smallest logical unit in kubernetes, contain one or more containers
-	
+	kubeconfig			= contains cluster, users, and context
+
 SCALLING
 	HORIZONTAL 			= deploy more instance
 	VERTICAL			= Upgrade spek
-	
+
 FLOW
 USER >>> Controller node (API server) >>> Worker Node {1..3} (Kubelet+Pods)
 Contoller node			Compute Node			Storage/Registy
@@ -31,6 +32,34 @@ KUBERNETES RESOURCES
 	Service				= expose a running application on a set of pods
 	ReplicaSets			= maintain the constant pod number
 	Deployment			= maintain the life cycle of an application
+
+KUBERNETES VS OPENSHIFT
+Kubernetes					OpenShift
+Namespaces					Projects
+----------					---------
+Provides a scoping mechanism for resources.	Supports increased permissions control, creation requests, 
+						and default templates for improved multitenancy workflows.
+						Adds additional display name and description fields.
+Ingresses 					Routes
+---------					------
+In a plain Kubernetes cluster, using ingress	Supports TLS termination and re-encryption.
+resources requires installation of an ingress 	Supports HAProxy annotation for extended features,
+controller. Different ingress controllers will 	such as enforcing HTTPS, selecting a load balancing algorithm,
+provide different features.			and enabling rate limiting.
+Deployments 					DeploymentConfigs
+-----------					-----------------
+Emphasizes availability over consistency.	Emphasizes consistency over availability.
+Uses ReplicaSets that support set-based 	Supports automatic rollbacks.
+match selectors.				Changes to the pod template automatically trigger rollouts.
+Supports pausing rollouts.			Supports custom deployment strategies and lifecycle hooks.
+Red Hat recommends using Deployments unless 
+you need a specific DeploymentConfigs feature.
+Kustomize 					Templates
+---------					---------
+Kubernetes kustomize manages configurations 	OpenShift Template resources are parameterized specification resources.
+using file overlays without templates.		Create resources from templates using the oc process command or the web console.
+Typically, manifests and kustomize overlays 
+are stored in version control.
 
 CLI
 INSTALL OPENSHIFT CLIENT IN DESKTOP
@@ -58,6 +87,9 @@ LOGIN
 	3. oc cluster-info
 	4. oc api-versions
 	5. oc get clusteroperator
+	6. oc config get-contexts
+	7. oc config use-context
+	8. oc config set-context <name-context> <*--namespace=namespace*>
 	
 PROJECT
 	1. oc new-project <PROJECT NAME>
@@ -299,11 +331,25 @@ oc logs nama_pods // melihat logs
 contoh : oc logs httpd-2-cbs29
 
 API-RESOURCES
-	1. oc api-resources
-	
+	1. spec 	= desired status
+	2. status 	= current status
+	3. command
+		oc api-resources
+
+IMAGE STREAM
+	1. Advantages
+		- Tagging images without pushing using the command line.
+    		- Configuring Builds and Deployments for automatic redeployment upon image updates.
+		- Fine-grained access control and image sharing across teams.
+		- Improving security by configuring view and use permissions on the image stream object.
+		- Avoiding application downtime that can occur when using untested image versions.
+		- Users without permissions on the source images can interact with image streams.
+	2. Annotating (JSON image.openshift.io/triggers)
+		- oc set trigger deploy/<DEPLOYMENT_NAME> --from-image <IMAGE_STREAM_TAG> -c <CONTAINER_NAME>.
 IMPORT-IMAGE
 	1. oc import-image my-ruby
-	
+	--check images update periodically
+	2. oc import-image <Image> --confirm --scheduled
 BUILD 
 	1. oc new build </GIT_DIRECTORY>
 		from build config
@@ -332,12 +378,46 @@ DEPLOY
 				3. namespace
 			4. spec
 		2. kubectl get deployments
+			filtering using filter
+				oc get deployment -n openshift-cluster-storage-operator --show-labels
+				oc get deployment -n openshift-cluster-storage-operator -l app=csi-snapshot-controller-operator -o name
 		3. oc new-app --template <TEMPLATE_NAME>
 			3.1. oc new-app --template <TEMPLATE_NAME> --param <ENV=PARAMETER> --image <IMAGE>
 			3.2. oc new-app <REPONAME>
+			filtering jsonpath
+				iterate list [*]= oc get deployment -n openshift-cluster-samples-operator cluster-samples-operator -o jsonpath='{.status.conditions[*].type}'
+				index notation [0]
+				condition	= jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+				range iteration = oc get pods -A -o jsonpath='{range .items[*]}' '{.metadata.namespace} {.metadata.creationTimestamp}{"\n"}'
+			create jsonpath for report
+				oc get nodes -o jsonpath-file=not_ready_nodes.jsonpath
+				---jsonpath
+				{range .items[*]}
+				  {.metadata.name}
+				  {range .status.conditions[?(@.status=="False")]}
+				    {.type}{"="}{.status} {.message}
+				  {end}
+				{end}
 		4. oc create deployment <DEPLOY_NAME> --image <IMAGE>
 		5. oc run <POD NAME> --image=<IMAGE> --env <Env=PARAMETER> --port <PORT> 
-	
+		6. Waiting on Triggered Deployment Updates
+		   - update secret
+			deployment_generation=$(oc get -n openshift-authentication deployment/oauth-openshift -o jsonpath='{.status.observedGeneration}')
+			- apply change
+			while
+			    new_generation=$(oc get \
+			        -n openshift-authentication deployment/oauth-openshift \
+			        -o jsonpath='{.status.observedGeneration}')
+			    [ $new_generation -eq $deployment_generation ]
+			do
+		    		sleep 3
+			done
+			oc rollout status -n openshift-authentication deployment/oauth-openshift --revision=$new_generation
+			while [ -n "$(oc get pod -n openshift-authentication -o \
+			jsonpath='{.items[?(@.metadata.deletionTimestamp != "")].metadata.name}')" ]
+			do
+			    sleep 3
+			done
 	HELM CHART
 	- Package that describes a set of Kubernetes resources that you can deploy. 
 	- Helm charts define values that you can customize when deploying an application. 
@@ -824,6 +904,9 @@ POD and SERVICE NETWORK
 	3. Auth Method :
 		- OAuth access token
 		- X.509 client certificates
+		- REST API
+			 must retrieve a bearer token from the OpenShift OAuth server, 
+			 and then include this token as a header in requests to the API server.
 	4. Auth Operator
 		- runs an OAuth server grant access token to user but validate first
 	5. Identity Providers
@@ -916,6 +999,7 @@ POD and SERVICE NETWORK
 		- Controllers		= GitOps tools, such as ArgoCD, have controllers that watch cluster resources that are stored in a repository, and update the cluster to react to changes in that repository.
 		- Operator		= Operators automate creating, configuring, and managing instances of Kubernetes-native applications.
 	- ClusterRole
+		- type : basic-user, cluster-reader, and view
 		oc adm policy add-role-to-user cluster-role -z service-account
 		oc adm policy add-cluster-role-to-user cluster-role service-account
 			specify service account name in spec.serviceAccountName
@@ -936,7 +1020,29 @@ POD and SERVICE NETWORK
 			- Assign the app-sa service account to your application pod.
 			- Create a role binding on the project-2 project that references the app-sa service account and the secret-reader role or cluster role.
 				system:serviceaccount:project:service-account
-
+	9. REST API
+	   - Method
+	     	- Request a token from the OAuth server path /oauth/authorize?client_id=openshift-challenging-client&response_type=token. 
+		  The server responds with a 302 Redirect to a location. Find the access_token parameter in the location query string.
+		- Log in using the oc login command and inspect the kubeconfig yaml. This is normally located at ~/.kube/config. 
+		  Find the token listed under your user entry.
+		- Log in using the oc login command, and then run the oc proxy command to expose an API server proxy on your local machine. 
+		  Any requests to the proxy server will identify as the user logged in with oc.
+		- Log in using the oc login command, and then run the command oc whoami -t.
+	  - API Verb
+		API Verb	HTTP Request Command	Description
+		Create		POST			Create a new resource.
+		Get/List	GET			Retrieve a single resource or a list of resources.
+		Update		PUT			Update a resource by providing a full specification.
+		Patch		PATCH			Update a resource by providing a partial change described in a patch operation.
+		Delete	DELETE				Delete a resource or a list of resources.
+	  - Access
+		curl -k --header "Authorization: Bearer qfyV5ULvv...i712kJT" -X GET https://api.example.com/api
+	  - Find REST API
+		curl -k --header "Authorization: Bearer qfyV5ULvv...i712kJT" -X GET https://api.example.com/oapi
+	  - Filtering output
+		curl -sk --header "Authorization: Bearer qfyV5ULvv...i712kJT" \
+  -X GET https://api.example.com/api/v1/services | jq '.items[].metadata.name'
 	MAINTENANCE TASK
 	1. Kubernetes Batch API Resources
 		- Job 		= executed once
