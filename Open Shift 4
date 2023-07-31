@@ -71,17 +71,134 @@ POLICY
 	2. oc get rolebindings -owide -n <NAMESPACE> | grep nama/id_usr
 	
 APPLICATION
-	1. oc new-app <IMAGE LINK/CONTAINER LINK>
-	2. oc create route edge <NAMA ROUTE> --service=<NAME SERVICE>
-	3. oc get all
-
+	1. Run app
+	- oc new-app <IMAGE LINK/CONTAINER LINK>
+	- oc create route edge <NAMA ROUTE> --service=<NAME SERVICE>
+	- oc get all	
+	2. Security Context Constrainys (SCCs)
+	- Security mechanism that limits the access from a running pod in OpenShift to the host environment. 
+	  SCCs control the following host resources:
+		Running privileged containers
+		Requesting extra capabilities for a container
+		Using host directories as volumes
+		Changing the SELinux context of a container
+		Changing the user ID
+	- command
+		oc get scc (anyuid, hostaccess, hostmount-anyuid, hostnetwork, node-exporter, nonroot, previledged, restricted)
+		oc describe scc
+		oc get pod podname -o yaml | oc adm policy scc-subject-review -f -
+		oc create serviceaccount <service account name> -n <namespaced>
+		oc adm policy add-scc-to-user SCC -z <service-account name>
+		change config
+		oc set serviceaccount deployment/deployment-name <service-account-name>
+		note*
+		Restricted :
+		mostly pod created vy openshift is restricted, 
+		can't download images from public registry
+		pod run using random userid, cannot run pod on previledged port (<1024)
+		Anyuid :
+		run as user to be RunAsAny = pod run as any available user ID
+		
 OPERATOR (cluster-admin)
-	CLUSTER VERSION OPERATOR (CVO)
-	1. oc get clusteroperator / oc get co
-	2. oc describe clusteroperator <OPERATOR NAME>
-	3. oc explain
-	OPERATOR LIFECYCLE MANAGER (OLM)
-	addon
+	1. CLUSTER VERSION OPERATOR (CVO)
+	- oc get clusteroperator / oc get co
+	- oc describe clusteroperator <OPERATOR NAME>
+	- oc explain
+	2. OPERATOR LIFECYCLE MANAGER (OLM) and OperatorHub
+	- The operator pattern is a way to implement reusable software to manage such complex workloads.
+	- An operator typically defines custom resources (CRs). 
+	- installed in openshift-operator
+	3. Deploying Operator (Dashboard/Catalog)
+	- Cluster operators
+	  Cluster operators provide the platform services of OpenShift, such as the web console and the OAuth server.
+	- Add-on operators
+	  OpenShift includes the Operator Lifecycle Manager (OLM). 
+	  The OLM helps users to install and update operators in a cluster. 
+	  Operators that the OLM manages are also known as add-on operators, 
+	  in contrast with cluster operators that implement platform services.
+	- Other operators
+	  Software providers can create software that follows the operator pattern, and then distribute the software as manifests, Helm charts, or any other software distribution mechanism.
+	4. Implementing Operator
+	- Uses Kubernetes API to watch instances of the CRs and to create matching workloads
+		- Operator SDK 		= Go programming language and ansible, tools to package Helm Charts as operator
+		- Java Operator SDK	= Java programming language, quarkus extentsion to defelop operator
+	5. Operator details
+		- Details
+		  Displays information about the CSV.
+		- YAML
+		  Displays the CSV in YAML format.
+		- Subscription
+		  In this tab, you can change installation options, such as the update channel and update approval.
+		  This tab also links to the install plans of the operator. 
+		  When you configure an operator for manual updates, you approve install plans for updates in this tab.
+		- Events
+		  Lists events that are related to the operator. 
+	6. Troubleshooting Operators
+		- examine status and condition of the CSV, subscription and install plan resources
+	7. Install operator in CLI
+		- Locate the operator to install.
+		- Review the operator and its documentation for installation options and requirements.
+		- Decide the update channel to use.
+		- Decide the installation mode. For most operators, you should make them available to all namespaces.
+		- Decide to deploy the operator workload to an existing namespace or to a new namespace.
+		- Decide whether the Operator Lifecycle Manager (OLM) applies updates automatically,
+		  or requires an administrator to approve updates.
+		- Create an operator group if needed for the installation mode.
+		- Create a namespace for the operator workload if needed.
+		- Create the operator subscription.
+		- Review and test the operator installation.
+	8. OLM Resources
+		- Catalog source
+		Each catalog source resource references an operator repository. 
+		Periodically, the OLM examines the catalog sources in the cluster and retrieves information about the operators in each source.
+			oc get catalogsource -n openshift-marketplace
+		- Package manifest
+		The OLM creates a package manifest for each available operator. 
+		The package manifest contains the required information to install an operator, such as the available channels.
+			oc get packagemanifests
+			oc describe packagemanifest web-terminal -n openshift-marketplace
+		- Operator group
+		Operator groups define how the OLM presents operators across namespaces.
+			---
+			apiVersion: operators.coreos.com/v1
+			kind: OperatorGroup
+			metadata:
+			  name: name
+			  namespace: namespace 1
+			spec:
+			  targetNamespaces: 2
+			  - namespace
+		- Subscription
+		Cluster administrators create subscriptions to install operators.
+			---
+			apiVersion: operators.coreos.com/v1alpha1
+			kind: Subscription
+			metadata:
+			  name: web-terminal
+			  namespace: openshift-operators 1
+			spec:
+			  channel: fast 2
+			  name: web-terminal 3
+			  source: do280-catalog-redhat 4
+			  installPlanApproval: Manual 5
+			  sourceNamespace: openshift-marketplace
+		- Operator
+		The OLM creates operator resources to store information about installed operators.
+		- Install plan
+		The OLM creates install plan resources as part of the installation and update process. 
+		When requiring approvals, administrators must approve install plans.
+			oc patch installplan install-pmh78 --type merge -p '{"spec":{"approved":true}}' -n openshift-file-integrity
+		- Cluster service version (CSV)
+		Each version of an operator has a corresponding CSV. 
+		The CSV contains the information that the OLM requires to install the operator.
+		- Updates Operator
+			- OpenShift provides features to help to implement such policies.
+			For each installed operator, you can decide whether the OLM automatically applies updates, or whether the updates require administrator approval.
+			- Operator providers can create multiple channels for an operator. 
+			The provider can follow different policies to push updates to each channel, so that each channel contains different versions of the operator. 
+			When installing an operator, you choose the channel to follow for updates.
+			- You can create custom catalogs, and decide which versions of operators to include in the catalog. 
+			For example, in a multicluster environment, you configure operators to update automatically, but add only tested versions to the catalog.
 	
 VIEW PODS
 	1. oc get pods -o wide -A (all namespaces)
@@ -786,3 +903,442 @@ POD and SERVICE NETWORK
 		4. Group Management
 			oc adm groups new lead-developers
 			oc adm groups add-user lead-developers user1
+	8. Securing Kubernetes APIs (Authorization)
+	- Role-based access control (RBAC) authorization is preconfigured in OpenShift. 
+	  An application requires explicit RBAC authorization to access restricted Kubernetes APIs.
+	- A service account is a Kubernetes object within a project. 
+	- The service account represents the identity of an application that runs in a pod.
+		- Create an application service account.
+		- Grant the service account access to the Kubernetes API.
+		- Assign the service account to the application pods.
+	- API Use Case
+		- Monitoring APP 	= need access to watch cluster resources to verify cluster health
+		- Controllers		= GitOps tools, such as ArgoCD, have controllers that watch cluster resources that are stored in a repository, and update the cluster to react to changes in that repository.
+		- Operator		= Operators automate creating, configuring, and managing instances of Kubernetes-native applications.
+	- ClusterRole
+		oc adm policy add-role-to-user cluster-role -z service-account
+		oc adm policy add-cluster-role-to-user cluster-role service-account
+			specify service account name in spec.serviceAccountName
+		---
+		apiVersion: rbac.authorization.k8s.io/v1
+		kind: ClusterRole
+		metadata:
+		  name: secret-reader
+		rules:
+		- apiGroups: [""] 1
+		  resources: ["secrets"] 2
+		  verbs: ["get", "watch", "list"] 3
+	- Accessing API Resources in the Same Namespace
+	  	- you need a role or a cluster role and a service account in that namespace.
+	- Accesing API Resources in a Different Namespace
+		- create the role binding in the project with the resource.
+			- create an app-sa service account in the project-1 project.
+			- Assign the app-sa service account to your application pod.
+			- Create a role binding on the project-2 project that references the app-sa service account and the secret-reader role or cluster role.
+				system:serviceaccount:project:service-account
+
+	MAINTENANCE TASK
+	1. Kubernetes Batch API Resources
+		- Job 		= executed once
+			oc create job --dry-run=client -o yaml test --image=registry.access.redhat.com/ubi8/ubi:8.6 -- curl https://example.com
+		- Cron Job	= scheduled task
+			oc create cronjob --dry-run=client -o yaml test --image=registry.access.redhat.com/ubi8/ubi:8.6 --schedule='0 0 * * *' -- curl https://example.com
+	NETWORK SECURITY (HTTPS)
+	1. Secure Route (TLS Cerificate)
+		- Edge Termination 	= terminate in router not to pods (router serving cert)
+			client ---- encrypted ---- edge route (crt & key) ----- not encrypted ---- application
+			oc create route edge --service api-frontend --hostname api.apps.acme.com --key api.key --cert api.crt  1 2
+		- Passthrough		= encrypted traffic is sent straight to pod without TLS (app serving cert)
+			client ------ application ----- container cert mounts (/usr/local/etc/ssl/certs)  
+		- Re-encryption		= router terminates TLS with cert, and re-encrypted its connection to end point (two cert)
+			client ---- encrypted ---- edge route (crt & key) ----- encrypted (Public Key Infrastructure[PKI]) ---- application
+	2. Network Policies (ingress or egress rule)
+		- developer previledge enough
+		- using label (spec.ingress.namespaceSelector.matchLabels.network) (spec.ingress.podSelector.matchLabels.role) (port)instead IP addresses
+		- connection between two pod different namespaces
+		- command 
+		  add label to namespaces
+		  oc label namespace network-1 network=network-1
+			kind: NetworkPolicy
+			apiVersion: networking.k8s.io/v1
+			metadata:
+			  name: network-1-policy
+			  namespace: network-1
+			spec:
+			  podSelector:  1
+			    matchLabels:
+			      deployment: product-catalog
+			  ingress:  2
+			  - from:  3
+			    - namespaceSelector:
+			        matchLabels:
+			          network: network-2
+				      podSelector:
+				        matchLabels:
+				          role: qa
+			    ports:  4
+			    - port: 8080
+			      protocol: TCP
+		allow access from Openshift Cluster SVC
+			---
+			apiVersion: networking.k8s.io/v1
+			kind: NetworkPolicy
+			metadata:
+			  name: allow-from-openshift-ingress
+			spec:
+			  podSelector: {}
+			  ingress:
+			  - from:
+			    - namespaceSelector:
+			        matchLabels:
+			          network.openshift.io/policy-group: ingress
+			---
+			apiVersion: networking.k8s.io/v1
+			kind: NetworkPolicy
+			metadata:
+			  name: allow-from-openshift-monitoring
+			spec:
+			  podSelector: {}
+			  ingress:
+			  - from:
+			    - namespaceSelector:
+			        matchLabels:
+			          network.openshift.io/policy-group: monitoring
+	3. Interlal Traffic with TLS
+		- Zero-trust environments require that a trusted certificate authority (CA) signs the certificates that are used to encrypt traffic. 
+		- By referencing the CA certificate, an application can cryptographically verify the authenticity of another application with a signed certificate.
+		- OpenShift provides the service-ca controller to generate and sign service certificates for internal traffic
+		- To generate a certificate and key pair, apply the service.beta.openshift.io/serving-cert-secret-name=your-secret annotation to a service. 
+			oc annotate service hello service.beta.openshift.io/serving-cert-secret-name=hello-secret
+		  mount the secret in the application deployment. 
+			spec:
+			  template:
+			    spec:
+			      containers:
+			        - name: hello
+			          volumeMounts:
+			            - name: hello-volume 1
+ 			             mountPath: /etc/pki/nginx/ 2
+			      volumes:
+ 			       - name: hello-volume 3
+			          secret:
+			            defaultMode: 420 4
+			            secretName: hello-secret 5
+			            items:
+			              - key: tls.crt 6
+			                path: server.crt 7
+			              - key: tls.key 8
+ 			                path: private/server.key 
+		- Client Service Application Configuration
+		  - Config Map
+		    Apply the service.beta.openshift.io/inject-cabundle=true annotation to a configuration map to inject the CA bundle into the data: { service-ca.crt }
+			oc annotate configmap ca-bundle service.beta.openshift.io/inject-cabundle=true
+		  - API service
+		    Applying the annotation to an API service injects the CA bundle into the spec.caBundle field.
+		  - CRD
+		    Applying the annotation to a CRD injects the CA bundle into the spec.conversion.webhook.clientConfig.caBundle field.
+		  - Mutating or validating webhook
+		    Applying the annotation to a mutating webhook or validating webhook injects the CA bundle into the clientConfig.caBundle field.
+		- Key Rotation
+		  - valid 26 months, rotate after 13 month, 13 month after is grace period (pod need restarted to inject new CA bundle)
+		  - manual rotate
+			oc delete secret certificate-secret (restart pod if needed)
+			oc delete secret/signing-key -n openshift-service-ca
+	4. Alternatives to Service Cert
+	   - Service Mesh
+	   - certmanager operator
+
+	EXPOSING NON-HTTP SERVICE (LOAD BALANCER)
+	- accesing app that need ip and port
+	  a service that uses the 1.2.3.4 IP address runs an SSH server that listens on port 22.
+	- A service resource contains the following information:
+	  	- A selector that describes the pods that run the service
+	  	- A list of the ports that provide the service on the pods
+	1. Internal communication
+	  Services of the ClusterIP type provide service access within the cluster.
+	2. Exposing services externally
+		Services of the NodePort and LoadBalancer types, as well as the use of the external IP feature of ClusterIP services, 
+		expose services that are running in the cluster to outside the cluster.
+	3. Load Balancer SVC
+		- Metal LB operator
+		  load balancer component that provides a load balancing service for clusters that do not run on a cloud provider
+		  MetalLB operates in two modes: layer 2 and Border Gateway Protocol (BGP), with different properties and requirements.
+		- Load Balancer SVC
+			oc expose --type LoadBalancer
+			oc get svc
+			-----
+			apiVersion: v1
+			kind: Service
+			metadata:
+			  name: example-lb
+			  namespace: example
+			spec:
+			  ports:
+			  - port: 1234 1
+			    protocol: TCP
+			    targetPort: 1234
+			  selector:
+			    name: example 2
+			  type: LoadBalancer 3
+
+	MULTUS SECONDARY NETWORK
+	- expose app externaly using secondary network (for security concern)
+	- The Multus CNI (container network interface) plug-in helps to attach pods to custom networks.
+	1. Configuring Secondary Network
+		- use operators, such as the Kubernetes NMState operator or the SR-IOV (Single Root I/O Virtualization) network operator
+		- The SR-IOV network operator configures SR-IOV network devices for improved bandwidth and latency on certain platforms and devices.
+	2. Attaching Secondary Network
+		- create a NetworkAttachmentDefinition resource
+		- pod annotation
+			- add the k8s.v1.cni.cncf.io/networks annotation to the pod's template
+				apiVersion: apps/v1
+				kind: Deployment
+				metadata:
+				  name: example
+				  namespace: example
+				spec:
+ 				 selector:
+				    matchLabels:
+				      app: example
+				      name: example
+				 template:
+				    metadata:
+				      annotations:
+				        k8s.v1.cni.cncf.io/networks: example
+				      labels:
+				        app: example
+				        name: example
+ 			- oc get pod example -o jsonpath='{.metadata.annotations.k8s\.v1\.cni\.cncf\.io/networks-status}'
+	3. Attachment Custom Resources
+	  Host device
+	  Attaches a network interface to a single pod.
+		apiVersion: k8s.cni.cncf.io/v1
+		kind: NetworkAttachmentDefinition
+		metadata:
+		  name: example 1
+		spec:
+		  config: |-
+		    {
+		      "cniVersion": "0.3.1",
+		      "name": "example", 2
+		      "type": "host-device", 3
+		      "device": "ens4",
+		      "ipam": { 4
+		        "type": "dhcp"
+			--or--
+			"ipam": {
+			  "type": "static",
+			  "addresses": [
+			    {"address": "192.168.X.X/24"}
+			  ]
+			}
+		      }
+		    }
+	  Bridge
+	  Uses an existing bridge interface on the node, or configures a new bridge interface. 
+	  The pods that are attached to this network can communicate with each other through the bridge, and to any other networks that are attached to the bridge.
+	  IPVLAN
+	  Creates an IPVLAN-based network that is attached to a network interface.
+	  MACVLAN
+	  Creates an MACVLAN-based network that is attached to a network interface.
+
+	4. Network Operator Settings
+	  You can also create the same network attachment by editing the cluster network operator configuration:
+		apiVersion: config.openshift.io/v1
+		kind: Network
+		metadata:
+		  name: cluster
+		spec:
+		...output omitted...
+		  additionalNetworks:
+		  - name: example 1
+		    namespace: example 2
+		    rawCNIConfig: |- 3
+		      {
+		        "cniVersion": "0.3.1",
+		        "name": "example", 4
+		        "type": "host-device", 5
+		        "device": "ens4",
+		        "ipam": { 6
+		          "type": "dhcp"
+		        }
+ 		     }
+  		  type: Raw
+
+	PATCHING KUBERNETES RESOURCES
+		- oc patch deployment hello -p '{"spec":{"template":{"spec":{"resources":{"requests":{"cpu": "100m"}}}}}}'
+		- oc patch deployment hello --patch-file ~/volume-mount.yaml
+
+	PROJECT and CLUSTER QUOTAS
+	-  By using Kubernetes role-based access control (RBAC), 
+	   cluster administrators can allow users to create workloads on their own.
+	1. Resources Limits
+	   Kubernetes can limit the resources that a workload consumes. 
+	   Workloads can specify an upper bound of the resources that they expect to use under normal operation.
+	   resource limits prevent the workload from consuming an excessive amount of resources and impacting other workloads.
+	2. Resources Requests
+	   Workloads can declare their minimum required resources. 
+	   Kubernetes tracks requested resources by workloads, and prevents deployments of new workloads if the cluster has insufficient resources.
+		apiVersion: v1
+		kind: ResourceQuota
+		metadata:
+		  name: memory
+		  namespace: example
+		spec:
+		  hard: 1
+		    limits.memory: 4Gi
+		    requests.memory: 2Gi
+		  scopes: {} 2
+		  scopeSelector: {} 3
+	3. Object Count Quotas
+		- create a quota that prevents the creation of more than 10 deployments in a namespace.
+			oc api-resources --api-group=""  --namespaced=true
+	4. Applying Project Quotas
+		oc create resourcequota example --hard=count/pods=1
+		oc get quota example -o yaml
+		oc get quota
+		- Across Multiple Projects
+		oc create clusterresourcequota example --project-label-selector=group=dev --hard=requests.cpu=10
+			---
+			apiVersion: quota.openshift.io/v1
+			kind: ClusterResourceQuota
+			metadata:
+			  name: example
+			spec:
+			  quota: 1
+			    hard:
+			      limits.cpu: 4
+			  selector: 2
+			    annotations: {}
+			    labels:
+			      matchLabels:
+ 			       kubernetes.io/metadata.name: example
+			- AppliedClusterResourceQuota
+			  oc describe AppliedClusterResourceQuota -n example-2
+	5. Troubleshooting Resource Quotas
+		oc create resourcequota example --hard=count/deployment=1
+		oc get resourcequota
+		oc get event --sort-by .metadata.creationTimestamp
+
+	MANAGING NAMESPACE RESOURCES
+	1. Limit Ranges
+		Default limit
+		Use the default key to specify default limits for workloads.
+		Default request
+		Use the defaultRequest key to specify default requests for workloads.
+		Maximum
+		Use the max key to specify the maximum value of both requests and limits.
+		Minimum
+		Use the min key to specify the minimum value of both requests and limits.
+		Limit-to-request ratio
+		The maxLimitRequestRatio key controls the relationship between limits and requests. If you set a ratio of two, then the resource limit cannot be more than twice the request.
+			 oc set resources deployment example --limits=cpu=new-cpu-limit
+			---
+			apiVersion: v1
+			kind: ResourceQuota
+			metadata:
+			  name: example
+			  namespace: example
+			spec:
+			  hard:
+			    limits.cpu: "8"
+			    limits.memory: 8Gi
+			    requests.cpu: "4"
+			    requests.memory: 4Gi
+
+	PROJECT CREATION (Self-Provisioner Role)
+	1. Resources = ProjectRequest
+	2. Project Template
+		- Roles and Role Bindings
+		  grant specific permissions in new projects. 
+		- Resource quotas and limit ranges
+		- Network policies
+		  Add network policies to the template to enforce organizational network isolation requirements.
+	3. command
+		oc adm create-bootstrap-project-template -o yaml > file (initial template)
+			To define a project template and to reduce the risk of errors, you can perform the following steps:
+				Create a namespace.
+				Create your chosen resources and test until you get the intended behavior.
+				List the resources in YAML format.
+				Edit the resource listing to ensure that the definitions create the correct resources. 
+					For example, remove elements that do not apply to resource creation, such as the creationTimestamp or status keys.
+				Replace the namespace name with the ${PROJECT_NAME} value.
+				Add the list of resources to the project template that the oc adm create-bootstrap-project-template command generates.	
+		oc create -f template -n openshift-config
+			--- Update the projects.config.openshift.io/cluster
+			apiVersion: config.openshift.io/v1
+			kind: Project
+			metadata:
+			...output omitted...
+			  name: cluster
+			...output omitted...
+			spec:
+			  projectRequestTemplate:
+			    name: project-request
+		oc describe clusterrolebinding.rbac self-provisioners
+		---- To make changes, disable automatic updates with the annotation, and edit the subjects in the binding.
+		oc annotate clusterrolebinding/self-provisioners --overwrite rbac.authorization.kubernetes.io/autoupdate=false
+		oc patch clusterrolebinding.rbac self-provisioners -p '{"subjects": null}'
+
+	DETECT DEPRECATED KUBERNETES API USAGE
+	API version	Category	Description
+	v1alpha1	Alpha	Experimental features
+	v1beta1		Beta	Pre-release features
+	v1		Stable	Stable features, generally available
+	1. command
+		---check
+		oc api-resources | egrep '^NAME|cronjobs'
+		egrep 'kind|apiVersion' cronjob-beta.yaml
+		oc get apirequestcounts | awk '{if(NF==4){print $0}}'
+		can't deploy beta but there is stable version (deprecated)
+	2. Latest Kubernetes API
+		Resource		Removed API Group	Current API Group
+		CronJob			batch/​v1beta1		batch/​v1
+		Event			events.k8s.io/​v1beta1	events.k8s.io/​v1
+		PodSecurityPolicy	policy/​v1beta1		The PodSecurityPolicy admission controller will be removed
+		RuntimeClass		node.​k8s.​io/​v1beta1	node.​k8s.​io/​v1
+	3. Deprecated and Removed Features in Openshift
+		OpenShift 4.10		OpenShift 4.11		OpenShift 4.12	Feature
+		General Availability	General Availability	Deprecated	CoreDNS wildcard queries for the cluster.local domain name
+		Deprecated		Deprecated		Deprecated	SQLite database format for operator catalogs
+		General Availability	Removed			Removed		Removal of Jenkins images from install payload
+		General Availability	Removed			Removed		Automatic generation of service account token secrets
+		Deprecated		Removed			Removed		Access to Prometheus and Grafana UIs in the monitoring stack
+
+
+	UPDATE OPENSHIFT
+	1. Over-the-Air updates (OTA)
+		- manages = controller manifests, cluster roles, and any other resources to update a cluster to a particular version.
+	2. Before action
+		oc get machinehealthcheck -n openshift-machine-api
+		oc annotate machinehealthcheck -n openshift-machine-api machine-api-termination-handler cluster.x-k8s.io/paused=""
+	3. After action
+		oc annotate machinehealthcheck -n openshift-machine-api machine-api-termination-handler cluster.x-k8s.io/paused-
+	4. Update Process
+		- Machine Config Operator
+		  The Machine Config Operator applies the desired machine state to each of the nodes.
+		  This component also handles the rolling upgrade of nodes in the cluster, and uses CoreOS Ignition as the configuration format.
+		- Operator Lifecycle Manager
+		  The OLM orchestrates updates to any operators that are running in the cluster.
+	5. Update via web console
+		Administration > Cluster Settings > Update now
+	6. Update via CLI
+		*Be sure to update all operators that are installed through the OLM to the latest version before updating the OpenShift cluster.
+		*Retrieve the cluster version and review the current update channel information. If you are running the cluster in production, then ensure that the channel reads stable.
+			oc get clusterversion
+			oc get clusterversion -o jsonpath='{.items[0].spec.channel}{"\n"}'
+			oc patch configmap admin-acks -n openshift-config --type=merge --patch '{"data":{"ack-4.11-kube-1.25-api-removals-in-4.12":"true"}}'
+			--check upgrade
+			oc adm upgrade
+			--apply upgarde
+			oc adm upgrade --to-latest=true or oc adm upgrade --to=VERSION
+			--check process
+			oc get clusterversion
+			oc describe clusterversion
+	7. Proccess
+		The updates use the rpm-ostree technology for managing transactional upgrades. 
+		Updates are delivered via container images and are part of the OpenShift update process. 
+		When the update deploys, the nodes pull the new image, extract it, write the packages to the disk, and then modify the bootloader to boot into the new version. 
+		The machine reboots and implements a rolling update to ensure that the cluster capacity is minimally impacted.
+
+	
