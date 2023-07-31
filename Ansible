@@ -134,6 +134,20 @@ AD HOC COMMAND
 	3. ansible <hosts> -m ping
 	4. ansible -m user -a 'name=newbie uid=4000 state=present' hostname
 	
+	MODULE NAME	DESCRIPTION
+	k8s 		Manages Kubernetes objects. This module has access to all Kubernetes APIs, allowing you to create, update, or delete Kubernetes objects.
+	k8s_info 	Retrieves information about Kubernetes objects.
+	k8s_scale 	Sets a new size for a Deployment, ReplicaSet, Replication Controller, or Job.
+		dependencies
+		     openshift >= 0.6
+			PyYAML >= 3.11
+	k8s_auth 	Authenticates to Kubernetes clusters which require an explicit login step, like OpenShift. This module returns an api_key that the other modules can use for authentication.
+		dependencies
+			urllib3
+			requests
+			requests-oauthlib 
+	k8s_service 	Manages Services on Kubernetes.
+
 	MODULE CATEGORY					MODULES
 	Files Modules					copy [argument] >>> 'argument'
 							file [argument] 
@@ -153,7 +167,16 @@ AD HOC COMMAND
 							nmcli [argument]
 							uri [argument]
 	*argument sometimes mandatory
-	
+
+	MODULE AUTH OPTION
+		- If no connection options are provided, 
+		  the openshift client attempts to load the default configuration file from ~/.kube/config.
+		- To authenticate via by HTTP Basic Auth, provide the host, username, and password module parameters. 
+		  The optional proxy module parameter connects through an HTTP proxy.
+		- The k8s_auth module provides an authentication token that can be used with the api_key module parameter to authenticate with the API.
+		- Verify SSL certificates for the API server using the ca_cert, client_cert, and client_key module parameters. 
+		  Toggle certificate validation with the validate_certs module parameter.
+
 ARBITARY COMMAND
 	command run speciefied as an argument to the module using -a option
 	ansible <hosts> -m command -a </pathofcomman(bin)>
