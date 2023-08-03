@@ -179,11 +179,15 @@ OPERATOR (cluster-admin)
 		- Create a namespace for the operator workload if needed.
 		- Create the operator subscription.
 		- Review and test the operator installation.
-	8. OLM Resources
+	8. Delete Operator
+		- oc delete sub <subscription name>
+		- oc delete csv <currentCSV>
+	9. OLM Resources
 		- Catalog source
 		Each catalog source resource references an operator repository. 
 		Periodically, the OLM examines the catalog sources in the cluster and retrieves information about the operators in each source.
 			oc get catalogsource -n openshift-marketplace
+			oc get csv -A
 		- Package manifest
 		The OLM creates a package manifest for each available operator. 
 		The package manifest contains the required information to install an operator, such as the available channels.
@@ -996,7 +1000,7 @@ POD and SERVICE NETWORK
 		- Assign the service account to the application pods.
 	- API Use Case
 		- Monitoring APP 	= need access to watch cluster resources to verify cluster health
-		- Controllers		= GitOps tools, such as ArgoCD, have controllers that watch cluster resources that are stored in a repository, and update the cluster to react to changes in that repository.
+		- Controllers		= GitOps tools, such as Argo, have controllers that watch cluster resources that are stored in a repository, and update the cluster to react to changes in that repository.
 		- Operator		= Operators automate creating, configuring, and managing instances of Kubernetes-native applications.
 	- ClusterRole
 		- type : basic-user, cluster-reader, and view
@@ -1447,4 +1451,60 @@ POD and SERVICE NETWORK
 		When the update deploys, the nodes pull the new image, extract it, write the packages to the disk, and then modify the bootloader to boot into the new version. 
 		The machine reboots and implements a rolling update to ensure that the cluster capacity is minimally impacted.
 
-	
+
+	Continous Integration (CI) and Continous Deployment (CD)
+	1. Continous Integration
+		- Build Software
+			building a software piece from its source code and any required dependencies, such as programming libraries
+		- Run Unit Tests
+		- Save Artifact
+			distributable piece of software, such as a native executable file, an RPM package, a Java library archive (JAR file), or a container image.
+	2. Continous Deployment
+		- Find/Create Target Environtment (Integration Testing)
+		- Deploy Artifact
+		- Smoke Test Artifact
+	3. GitOps
+		GitOps is a process that stores configurations of a target environment, such as a server or a cluster, in files managed by a version control system. 
+		It works under the assumption that system administrators do not change configurations on a live system directly. 
+		The best practice is to change the configurations under version control, and optionally have a fellow system administrator review them, before applying to a live system.
+	4. Jenkins
+		Jenkins is a Java application that can be deployed to Servlet containers.
+		- Describing Essential Jenkins Concepts
+		  Project (or Job)
+			A script that describes a workflow that Jenkins should perform, such as building an application.
+		  Pipeline
+    			A kind of Job that follows the pipeline concept and syntax and describes a workflow as a sequence of steps that are grouped in stages.
+		  Build
+			A single execution of a project, including its runtime logs and output artifacts. 
+			This term comes from Jenkins' origins as a software build server.
+		  Node
+			A server or container that runs builds.
+		  Worker
+			A thread in a master node that either runs a build or orchestrates available agents.
+		  Workspace
+			A file system folder, dedicated to a project and sometimes also to a node, where builds store data that is either temporary, or reused between multiple builds of the same project.
+		  Credential
+			A Jenkins construct that provides projects and builds with access credentials to external resources. 
+			There are different credentials to store user name and password pairs, SSH keys, and other credential types.
+		  Plug-in
+			Almost all of Jenkins functionality is extensible by plug-ins written in Java. 
+			There are many community plug-ins that support different kinds of nodes, credentials, and programming languages.
+			*Note that these plug-ins may depend on software tools, such as the Java Development Kit (JDK) 
+			and the Node Package Manager (NPM) on agent nodes.
+		- Types of Jenkins Nodes
+			Master
+				Stores definitions of projects and their builds.
+			Agent
+				Run builds (or parts of a build) under the control of a master node.
+		- Jenkinsfile
+    			- The pipeline directive requires one agent and one stages directive.
+			- The stages directive requires one or more stage directives.
+				The following directives are allowed inside pipelines directive:
+				triggers: defines conditions that fire automatic execution of builds from that pipeline.
+    				options: defines general configuration settings for the pipeline, overriding most properties from the web UI, for example: timeouts for running builds and retention of build logs.
+    				parameters: defines parameters that a user, or an upstream pipeline, can provide for running a build.
+				environment: defines environment variables available inside a pipeline or a stage.
+				agent: defines which agent nodes should execute, either all stages or a single stage of the pipeline.
+				Some directives, for example agent, can occur at different levels inside a pipeline, for example, at either pipeline or stage.
+			Scripted pipelines 	= start with node directive and define imperative script using Groovy
+			Declarative pipeline	= start with pipeline using domain-scale-language (DSL)
