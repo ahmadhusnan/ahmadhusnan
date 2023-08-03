@@ -672,7 +672,72 @@ POD and SERVICE NETWORK
 			2.4. oc create secret generic <SECRET_NAME> --from-file user=/tmp/demo/user --from-file root_password=/tmp/demo/root_password
 			2.5 oc set volume deployment/demo --add --type secret <TYPE_SECRET> --secret-name <SECRET_NAME> --mount-path </MOUNTDIR> 
 			2.6  oc delete configmap/<CONFIGMAP_NAME> -n <NAMESPACES>
-
+	Block Storage for Databases (iSCSI & Fibre Channel)
+	1. Benefits :
+		- speed
+		- efficiency
+	2. Drawback :
+		- Block storage is not a shared read-write storage technology. Only one host at a time can write data.
+		- Block storage can be expensive.
+		- Block storage does not provide robust metadata about stored data. 
+		  Adding a file system to a block device provides additional metadata for each record, such as a file name or permissions.
+	3. Schema :
+		- data record to multiple block
+	4. Accessing
+		- app needs direct access to the block storage device
+		---
+		apiVersion: v1
+		kind: PersistentVolume
+		metadata:
+		  name: fc-block-pv-01 1
+		spec:
+  		accessModes:
+  		  - ReadWriteOnce
+		  capacity:
+ 		  storage: 10Gi
+		  storageClassName: fc-block 2
+		  volumeMode: Block 3
+		  fc: 4
+		    targetWWNs: ["500...fd1"]
+		    lun: 0
+		    readOnly: false
+		---
+		apiVersion: v1
+		kind: PersistentVolumeClaim
+		metadata:
+		  name: block-pvc
+		spec:
+		  accessModes:
+		    - ReadWriteOnce
+		  volumeMode: Block 1
+		  resources:
+		    requests:
+		      storage: 10Gi
+		  storageClassName: fc-block 2
+		---
+		apiVersion: v1
+		kind: Pod
+		metadata:
+		  name: pod-with-block-volume
+		spec:
+		  containers:
+		    - name: fc-container
+		      image: fedora:26
+		...output omitted...
+		      volumeDevices: 1
+		        - name: data 2
+		          devicePath: /dev/xvda 3
+		  volumes:
+		    - name: data 4
+		      persistentVolumeClaim:
+		        claimName: block-pvc 5
+	5. Binding Scenarios
+	PVC Volume Mode		PV Volume Mode	Result
+	Unspecified		Block 		Does not bind.
+	Filesystem 		Block 		Does not bind.
+	Block 			Block 		The PV binds to the PVC.
+	
+	Unspecified		Unspecified	The PV binds to the PVC, but the PV is not a block volume. Unspecified values default to Filesystem.
 	Persistent Data Volumes
 		1. Method :
 		- Static 	: create PV manual for cluster
@@ -684,9 +749,30 @@ POD and SERVICE NETWORK
 		- iSCSI		: Internet Small Computer System Interface is IP based provide block-level access to storage devices
 		- local		
 		- NFS		: can accessed by multiple pod at same times
-		3. Persistent Volume Claims(PVC)
+		3. Persistent Volume (PV)
+		---
+		apiVersion: v1
+		kind: PersistentVolume
+		metadata:
+		  name: pv0003 1
+		spec:
+		  capacity:
+		    storage: 5Gi 2
+		  volumeMode: Filesystem 3
+		  accessModes: 4
+		    - ReadWriteOnce
+		  persistentVolumeReclaimPolicy: Recycle 5
+		  storageClassName: slow 6
+		  mountOptions:
+		    - hard
+		    - nfsvers=4.1
+		  nfs: 7
+		    path: /tmp
+		    server: 172.17.0.2
+		4. Persistent Volume Claims(PVC)
 		- tied with namespaced not pods
 		- declare what an app needs, which Kubernetes porvides on a best-effort basis
+		- Specified : Storage size, Storage class, access mode
 			Create PVC > update in deployment
 			3.1. oc set volumes deployment/<DEPLOY_NAME> \ 1
 				--add \ 2
@@ -697,17 +783,109 @@ POD and SERVICE NETWORK
 				--mount-path </var/lib/example-app> \ 7
 				--claim-name <example-pv-claim> 
 			3.2. YAML (kind: PersistentVolumeClaim)
-		4. Storage Class (Policy set)
+		5. Storage Class (Policy set)
 		Manual Reclaim
 			4.1 oc delete pv <PV_NAME>
 			4.2 oc create pv <using data from previous PV>
 			4.3 Remove data on the storage asset, and delete the storage asset
-		5. Network-Attached Storage(NAS)
+		6. Network-Attached Storage(NAS)
 		File based storage architecture using two protocol IP or TCP
 		- single access point
 		- built in security 
 		- fault-tolerance
 		6. Stateful Sets87
+		7. Storage Operator
+		- manage the provisioning of persistent volumes and related storage resources.
+			oc get clusterserviceversions --all-namespaces
+			oc create -f local-volumes.yml -n local-storage
+		---
+		apiVersion: "local.storage.openshift.io/v1"  1
+		kind: "LocalVolume"  2
+		metadata:
+		  name: "local-disks"  3
+		spec:
+		  storageClassDevices:
+		    - storageClassName: "fast-local-storage"  4
+		      volumeMode: Filesystem
+		      devicePaths:
+		        - /dev/sdb  5
+		    - storageClassName: "standard-local-storage"  6
+		      volumeMode: Filesystem
+		      devicePaths:
+		        - /dev/hda  7
+		8. Ansible Playbooks
+		- Use a playbook to create and manage storage volumes, persistent volumes, and storage classes.
+		9 Shared Storage
+		- Benefits :
+			CI/CD
+			Artificial Intelgence Workload
+			Streaming Application
+		- Types :
+			File Storage	: Network File System (NFS), Server Message Block (SMB), Common Internet File System (CIFS)
+			Block Storage	: Storage Area Network (SAN), Amazon Elastic Block Store (EBS), Google Cloud Persistent Disk
+			Object Sorage(arbitrary metadata) : Amazon Simple Storage Service (S3), Red Hat Ceph Storage, Openstack Object Storage (Swift)
+		10. Azure File-System
+		    ---
+			apiVersion: storage.k8s.io/v1
+			kind: StorageClass
+			metadata:
+			  name: azurefile-lrs 1
+			provisioner: kubernetes.io/azure-file 2
+			parameters:
+			  skuName: Standard_LRS 3
+			  storageAccount: azure_storage_account_name 4
+			  secretNamespace: my-secret-namespace 5
+			  secretName: azure-storage-credentials 6
+		11. Default Storage Class
+			oc annotate storageclass standard --overwrite "storageclass.kubernetes.io/is-default-class=true"
+			cat set_default.yml
+			oc patch storageclass standard -p "$(cat set_default.yml)"
+			oc get storageclasses
+			---
+			apiVersion: storage.k8s.io/v1
+			kind: StorageClass
+			metadata:
+  			annotations:
+			    storageclass.kubernetes.io/is-default-class: "true" 1
+		12. Restricting Storage Access
+			Resource Name		Description
+			requests.storage 	The sum of storage space requests across all persistent volume claims can not exceed this value.
+			persistentvolumeclaims 	The total number of persistent volume claim resources that can exist in a project.
+			<storage-class-name>.storageclass.storage.k8s.io/ requests.storage 	The sum of storage space requests for the across all persistent volume claims, but only for the <storage-class-name> storage class.
+			<storage-class-name>.storageclass.storage.k8s.io/ persistentvolumeclaims 	The total number of persistent volume claim resources for the <storage-class-name> storage class that can exist in a project.			
+			---
+			apiVersion: v1
+			kind: ResourceQuota
+			metadata:
+			  name: storage 1
+			  namespace: test 2
+			spec:
+			  hard:
+			    persistentvolumeclaims: 4 3
+			    requests.storage: 100G 4
+		13. Local Block Storage
+			---
+			apiVersion: v1
+			kind: PersistentVolume
+			metadata:
+			  name: local-pv-01
+			spec:
+			  capacity:
+			    storage: 500Gi
+			  accessModes:
+			  - ReadWriteOnce
+			  persistentVolumeReclaimPolicy: Retain
+			  storageClassName: local-storage
+			  local:  1
+			    path: /mnt/disks/vol1  2
+			  nodeAffinity:
+			    required:
+			      nodeSelectorTerms:
+			      - matchExpressions:
+			        - key: kubernetes.io/hostname  3
+			          operator: In
+			          values:
+			          - my-node
 
 	HIGH AVAILABILITY APPLICATION
 	1. Restart Pods (configuring restart policy on pod)
@@ -763,6 +941,7 @@ POD and SERVICE NETWORK
 	KUSTOMIZE
 	Configuration management tool to make declarative changes to app configurations and components and oreserve the original YAML
 	(kustomization.yaml at rooot)
+	Work well with GiTOPS
 	Patch customization
 	1. Command
 		- kubectl kustomize overlay/production
@@ -990,7 +1169,76 @@ POD and SERVICE NETWORK
 		4. Group Management
 			oc adm groups new lead-developers
 			oc adm groups add-user lead-developers user1
-	8. Securing Kubernetes APIs (Authorization)
+	8. LDAP Identitiy Provider
+		- Configure :
+			Openshift trust IdM cert
+			oc create configmap ca-config-map --from-file=ca.crt=<(curl http://idm.ocp-${GUID}.example.com/ipa/config/ca.crt) -n openshift-config
+			Secret
+			oc create secret generic ldap-secret --from-literal=bindPassword=${LDAP_ADMIN_PASSWORD} -n openshift-config
+			Oauth Config
+			oc apply -f tmp/ldap-cr.yaml
+			oc login -u admin -p $(LDAP_ADMIN_PASSWORD)
+			---
+			apiVersion: config.openshift.io/v1
+			kind: OAuth
+			metadata:
+			  name: cluster
+			spec:
+			  identityProviders:
+			  - name: ldapidp
+			    mappingMethod: claim
+			    type: LDAP
+			    ldap:
+			      attributes:
+			        id:
+			        - dn
+			        email:
+			        - mail
+			        name:
+			        - cn
+			        preferredUsername:
+			        - uid
+			      bindDN: "uid=admin,cn=users,cn=accounts,dc=ocp4,dc=example,dc=com"
+			      bindPassword:
+ 			       name: ldap-secret
+			      ca:
+			        name: ca-config-map
+			      insecure: false
+			      url: "ldaps://idm.ocp4.example.com/cn=users,cn=accounts,dc=ocp4,dc=example,dc=com?uid"
+		- Syncronizing LDAP Group (Can be Cronjob) 
+			LDAPSyncConfig = resource contains the settings that the OpenShift cluster needs for group synchronization
+			oc adm groups sync-config tmp/ldap-sync.yml
+			oc get group admins -o yaml
+			oc adm policy add-cluster-role-to-group cluster-admin admins
+			---
+			kind: LDAPSyncConfig
+			apiVersion: v1
+			url: ldaps://idm.ocp4.example.com
+			bindDN: uid=ldap_user_for_sync,cn=users,cn=accounts,dc=example,dc=com
+			bindPassword: ldap_user_for_sync_password
+			insecure: false
+			ca: /path/to/ca.crt
+			rfc2307:
+			    groupsQuery:
+			        baseDN: "cn=groups,cn=accounts,dc=example,dc=com"
+			        scope: sub
+			        derefAliases: never
+ 			       pageSize: 0
+ 			       filter: (objectClass=posixgroup)
+			    groupUIDAttribute: dn
+			    groupNameAttributes: [ cn ]
+			    groupMembershipAttributes: [ member ]
+			    usersQuery:
+ 			       baseDN: "cn=accounts,dc=example,dc=com"
+			        scope: sub
+			        derefAliases: never
+			        pageSize: 0
+			    userUIDAttribute: dn
+			    userNameAttributes: [ cn ]
+			    tolerateMemberNotFoundErrors: false
+			    tolerateMemberOutOfScopeErrors: true
+
+	9. Securing Kubernetes APIs (Authorization)
 	- Role-based access control (RBAC) authorization is preconfigured in OpenShift. 
 	  An application requires explicit RBAC authorization to access restricted Kubernetes APIs.
 	- A service account is a Kubernetes object within a project. 
@@ -1024,7 +1272,7 @@ POD and SERVICE NETWORK
 			- Assign the app-sa service account to your application pod.
 			- Create a role binding on the project-2 project that references the app-sa service account and the secret-reader role or cluster role.
 				system:serviceaccount:project:service-account
-	9. REST API
+	10. REST API
 	   - Method
 	     	- Request a token from the OAuth server path /oauth/authorize?client_id=openshift-challenging-client&response_type=token. 
 		  The server responds with a 302 Redirect to a location. Find the access_token parameter in the location query string.
@@ -1062,6 +1310,41 @@ POD and SERVICE NETWORK
 			client ------ application ----- container cert mounts (/usr/local/etc/ssl/certs)  
 		- Re-encryption		= router terminates TLS with cert, and re-encrypted its connection to end point (two cert)
 			client ---- encrypted ---- edge route (crt & key) ----- encrypted (Public Key Infrastructure[PKI]) ---- application
+		- External  Use (CA approve not wildcard[*.apps.ocp4.example.com])
+			Ingress 	= route traffic into the OpenShift environment using recognized CA certificated
+			- Create a new configuration map in the openshift-config namespace.
+			- Prefix the file path with ca-bundle.crt= to name the data key in the configuration map as ca-bundle.crt.
+			-  OpenShift components communicate with each other using external-facing URLs. (NOT RHOCS trust bundle)
+				oc create configmap <CONFIGMAP-NAME> --from-file ca-bundle.crt=<PATH-TO-CERTIFICATE> -n openshift-config
+				oc patch proxy/cluster --type=merge --patch='{"spec":{"trustedCA":{"name":"<CONFIGMAP-NAME>"}}}'
+				oc create secret tls <SECRET-NAME> --cert <PATH-TO-CERTIFICATE> --key <PATH-TO-KEY> -n openshift-ingress
+				oc patch ingresscontroller.operator/default -n openshift-ingress-operator --type=merge --patch='{"spec": {"defaultCertificate": {"name": "<SECRET-NAME>"}}}'
+				watch oc get pods -n openshift-ingress
+		- Replacing Master API Cert
+			- The OpenShift master API uses a different certificate than the certificate used by the ingress controller. 
+			- Changing the master API certificate allows users to log in securely using the oc command.
+		- To change the master API certificate, you need:
+			- The master API certificate and key in PEM format.
+			- The certificate is issued to the URL used to access the master API, such as api.ocp4.example.com.
+			- The subjectAltName extension for the certificate contains the URL used to access the master API, such as DNS:api.ocp4.example.com.
+				oc create secret tls <SECRET-NAME> --cert <PATH-TO-CERTIFICATE> --key <PATH-TO-KEY> -n openshift-config
+				oc patch apiserver cluster --type=merge -p '{"spec": {"servingCerts": {"namedCertificates":''[{"names": ["<API-SERVER-URL>"],''"servingCertificate": {"name": "<SECRET-NAME>"}}]}}}'
+				oc get clusteroperator/kube-apiserver
+		- Enterprise CA (config.openshift.io/inject-trusted-cabundle=true)
+			- Copy your enterprise CA certificate to the /etc/pki/ca-trust/source/anchors directory. 
+			  Change the name of the certificate if it conflicts with an existing file name in that directory.
+			- Run the update-ca-trust extract command.
+				oc whoami --show-console
+				oc create route edge <ROUTE-NAME> --service <SERVICE>
+			- Check Enterprise CA trusted in Openshift
+				oc get proxy/cluster -o jsonpath='{.spec.trustedCA.name}{"\n"}'
+				oc extract configmap <CONFIGMAP-NAME> -n openshift-config --confirm
+				cat ca-bundle.crt
+				oc set data configmap <CONFIGMAP-NAME> --from-file ca-bundle.crt=<PATH-TO-NEW-CERTIFICATE> -n openshift-config
+				oc label configmap <CONFIGMAP-NAME> config.openshift.io/inject-trusted-cabundle=true
+				oc set volume dc/<DC-NAME> -t configmap --name trusted-ca --add --read-only=true --mount-path /etc/pki/ca-trust/extracted/pem --configmap-name <CONFIGMAP-NAME>
+				oc rsh <hello-3-65qs7>
+				curl https://hello.apps.ocp4.example.com
 	2. Network Policies (ingress or egress rule)
 		- developer previledge enough
 		- using label (spec.ingress.namespaceSelector.matchLabels.network) (spec.ingress.podSelector.matchLabels.role) (port)instead IP addresses
@@ -1157,7 +1440,30 @@ POD and SERVICE NETWORK
 	4. Alternatives to Service Cert
 	   - Service Mesh
 	   - certmanager operator
-
+	5. Troobleshoot Certificate
+		Resources :
+			- secrets
+			- configMaps
+			- custom resources (apiserver)
+		Check	:
+			watch oc get clusteroperator/kube-apiserver
+			oc get events --sort-by='.lastTimestamp' -n openshift-kube-apiserver
+			oc get pods -n openshift-ingress
+		Renew Certificate :
+			- API Server
+			oc get apiserver/cluster -o yaml <<<< find .spec.servingCerts.namedCertificates
+			oc extract secret/<SECRET-NAME> -n openshift-config --confirm
+			openssl x509 -in tls.crt -noout -dates
+			oc set data secret <SECRET-NAME> --from-file tls.crt=<PATH-TO-NEW-CERTIFICATE> --from-file tls.key=<PATH-TO-KEY> -n openshift-config
+			- Ingress Controller
+			oc get ingresscontroller/default -n openshift-ingress-operator -o jsonpath='{.spec.defaultCertificate.name}{"\n"}'
+			oc extract secret/<SECRET-NAME> -n openshift-ingress --confirm
+			openssl x509 -in tls.crt -noout -dates
+			oc set data secret <SECRET-NAME> --from-file tls.crt=<PATH-TO-NEW-CERTIFICATE> --from-file tls.key=<PATH-TO-KEY> -n openshift-config
+			curl -v -k https://oauth-openshift.apps.ocp4.example.com 2>&1 | grep -w date
+			- cluster Proxy
+			oc get proxy/cluster -o jsonpath='{.spec.trustedCA.name}{"\n"}'
+			oc set data configmap <CONFIGMAP-NAME> --from-file ca-bundle.crt=<PATH-TO-NEW-CERTIFICATE> -n openshift-config
 	EXPOSING NON-HTTP SERVICE (LOAD BALANCER)
 	- accesing app that need ip and port
 	  a service that uses the 1.2.3.4 IP address runs an SSH server that listens on port 22.
@@ -1274,6 +1580,101 @@ POD and SERVICE NETWORK
 		        }
  		     }
   		  type: Raw
+
+	NODE CERTIFICATES
+	1. Node Scaling
+		- Machine API automatically performs scaling operations 
+		- base steps remain the same (RHCOS):
+			- Update the compute node Ignition file with an updated TLS certificate.
+			- Install Red Hat Enterprise Linux CoreOS (RHCOS) from an ISO image or using a Preboot eXecution Environment (PXE) boot.
+			- Add the new instance to the ingress load balancer.
+			- Approve Certificate Signing Requests (CSRs) to allow the compute node to join the cluster.
+		- Update TLS Certificate
+			- This certificate expires 24 hours after installation (ignition).
+			- Fetch the latest TLS certificate from the Machine Config Server listening on the control plane port 22623.
+			- Run the openssl s_client -connect api-int.ocp4.example.com:22623 -showcerts command to retrieve the certificate.
+			- Extract the text wrapped between the BEGIN CERTIFICATE and END CERTIFICATE markers.
+			- Replace the base64-encoded certificate in the worker.ign as follows.
+			- Use the base64 command to encode the certificate text.
+		- Installing with PXE boot
+			- PXE relies on a set of very basic technologies:
+			- Dynamic Host Configuration Protocol (DHCP) for locating instances.
+			- Trivial File Transfer Protocol (TFTP) for serving the PXE files.
+			- HTTP for the ISO images and configuration files.
+			- The RHCOS PXE configuration specifies the location of a kernel file, OS images, and an Ignition configuration file.
+		- Ingress Load Balancing
+			- add the instance to external load balancer back-end pools. 
+			- HAProxy configuration file /etc/haproxy/haproxy.cfg. 
+				frontend ingress_secure
+				    bind *:443
+				    mode tcp
+				    default_backend ingress_secure_backend
+				backend ingress_secure_backend
+				    balance roundrobin
+				    mode tcp
+				    server worker01 192.168.50.13:443 check
+				    server worker02 192.168.50.14:443 check
+		- Approving Cert Signing Req
+			- When a new node attempts to join the cluster, OpenShift creates two Certificate Signing Requests (CSRs).
+			- First, the Machine Config Operator client requests a CSR: system:serviceaccount:openshift-machine-config-operator:node-bootstrapper
+			- Then, after you approve the node bootstrapper CSR, OpenShift creates a CSR with the new node as the requester, such as system:node:worker04
+				oc get csr -A
+				oc adm certificate approve <csr-name>
+				--approve all
+				oc get csr -A -o name | xargs oc adm certificate approve
+	MACHINE CONFIG & MACHINE CONFIG POOL
+	- Machine Config Operator (MCO) manages instance configuration changes and operating system upgrades.
+	 1. MachineConfig (MC)
+		- Machine Configs declare instance customizations using the Ignition config format. 
+		  Machine Configs are labeled with a role such as worker or infra.
+		- Machine Configs use the Ignition configuration format.
+		- Machine Config Daemon supports a limited set of configuration changes :
+			- Configuring core user SSH authorized keys.
+			- Declaring Systemd units.
+			- Writing custom files. ( Base64 encoded in ignition files)
+		- Machine Configs are specified with a machineconfiguration.openshift.io/role label.
+			oc get machineconfig --selector=machineconfiguration.openshift.io/role=worker
+			---
+			apiVersion: machineconfiguration.openshift.io/v1
+			kind: MachineConfig
+			metadata:
+			  labels:
+			    machineconfiguration.openshift.io/role: worker 1
+			  name: 60-journald 2
+			spec:
+			  config:
+			    ignition:
+			      version: 2.2.0
+			    storage:
+			      files:
+			      - contents:
+			          source: data:text/plain;charset=utf-8;base64,VGVzdGl...E8gKItAo= 3
+			        filesystem: root
+ 			       mode: 0644
+			        path: /etc/systemd/journald.conf
+	2. MachineConfigPool (MCP)
+		Machine Config Pools use labels to match one or more Machine Configs to one or more nodes. 
+		This creates a pool of nodes with the same configuration. 
+		The Machine Config Operator uses the Machine Config Pool to track status as it applies Machine Configs to the nodes.
+			apiVersion: machineconfiguration.openshift.io/v1
+			kind: MachineConfigPool
+			metadata:
+			    name: ml
+			spec:
+			    machineConfigSelector:
+			        matchExpressions:
+ 			           - key: machineconfiguration.openshift.io/role
+				     operator: In
+  			             values: [worker, ml] 1
+ 			   nodeSelector:
+			        matchLabels:
+  			      node-role.kubernetes.io/ml: "" 2
+	3. Labeling Node
+		- Add a custom role to a node by labeling the node with a node-role.kubernetes.io/ROLE
+			oc label node/worker03 node-role.kubernetes.io/infra=
+			oc get nodes
+		- Pod schedulling in speciffic node
+			(.spec.template.spec.nodeSelectpr.node-role.kubernetes.io/role: "")
 
 	PATCHING KUBERNETES RESOURCES
 		- oc patch deployment hello -p '{"spec":{"template":{"spec":{"resources":{"requests":{"cpu": "100m"}}}}}}'
@@ -1415,6 +1816,92 @@ POD and SERVICE NETWORK
 		General Availability	Removed			Removed		Automatic generation of service account token secrets
 		Deprecated		Removed			Removed		Access to Prometheus and Grafana UIs in the monitoring stack
 
+	CLUSTER MONITORING and METRICS
+	1. Components	:
+		- Cluster Monitoring Operator (CMO)
+		The cluster monitoring operator (CMO) is the central component of the monitoring stack. 
+		It controls the deployed monitoring components and ensures that they are always in sync with the latest version of the CMO.
+			oc get prometheuses -A
+			oc get servicemonitors -A
+			oc get podmonitors -A
+			oc get alertmanagers -A
+			oc get prometheusrules -A
+			oc adm policy add-cluster-role-to-user cluster-monitoring-view <USER>
+		- Prometheus Operator
+		The Prometheus operator deploys and configures both Prometheus and Alertmanager. 
+		The operator also manages the generation and configuration of configuration targets (service monitors and pod monitors).
+		- Prometheus
+		Monitoring server
+		- Prometheus Adapter
+		The Prometheus adapter exposes cluster resources that are used for Horizontal Pod Autoscaling (HPA).
+		- Alertmanager
+		Alertmanager handles alerts sent by the Prometheus server.
+			State		Description
+			Firing		The alert rule evaluates to true, and has evaluated to true for longer than the defined alert duration.
+			Pending		The alert rule evaluates to true, but has not evaluated to true for longer than the defined alert duration.
+			Silenced	The alert is Firing, but is actively being silenced. Administrators can silence an alert to temporarily deactivate it.
+			Not Firing	Any alert that is not Firing, Pending, or Silenced is labeled as Not Firing.
+		command
+			ALERTMANAGER="$(oc get route/alertmanager-main -n openshift-monitoring -o jsonpath='{.spec.host}')"
+			curl -s -k -H "Authorization: Bearer $(oc sa get-token prometheus-k8s -n openshift-monitoring)" https://${ALERTMANAGER}/api/v1/alerts | jq .
+			oc set data secret/alertmanager-main -n openshift-monitoring --from-file=/tmp/alertmanager.yaml
+			oc logs -f -c alertmanager alertmanager-main-0 -n openshift-monitoring
+		---alertmanager-main secret
+			"global":
+			  "resolve_timeout": "5m"
+			  "smtp_smarthost": "utility.lab.example.com:25" 1
+			  "smtp_from": "alerts@ocp4.example.com" 2
+			  "smtp_auth_username": "smtp_training" 3
+			  "smtp_auth_password": "Red_H4T@!" 4
+			  "smtp_require_tls": false 5
+			"receivers":
+			- "name": "email-notification" 6
+			  "email_configs": 7
+			    - "to": "ocp-admins@example.com" 8
+			- "name": "default"
+			"route":
+			  "group_by":
+			  - "job"
+			  "group_interval": "5m"
+			  "group_wait": "30s"
+			  "receiver": "default"
+			  "repeat_interval": "12h"
+			  "routes":
+			  - "match":
+			      "alertname": "Watchdog"
+			    "receiver": "default"
+			  - "match":
+			      "severity": "critical"
+			    "receiver": "email-notification" 9
+		- Kube state metrics
+		kube-state-metrics is a converter agent that exports Kubernetes objects to metrics that Prometheus can parse.
+		- OpenShift state metrics
+		openshift-state-metrics is based on the kube-state-metrics and adds monitoring for OpenShift-specific resources (such as image registry metrics).
+		- Node exporter
+		node-exporter exports low-level metrics for worker nodes.
+		- Thanos Querier
+		Thanos Querier is a single, multitenant interface that enables aggregating and deduplicating cluster and user workload metrics.
+		- Grafana
+		Grafana is a platform for analyzing and visualizing metrics. The Grafana dashboards provided with the monitoring stack are read-only.
+
+	CLUSTER LOGGING
+	1. Benefits 	:
+		aggregation of all the logs from the pods and node of an OpenShift cluster to a centralized location. 
+	2. Cluster Logging Components :
+		logStore =  is the Elasticsearch cluster
+			- Stores the logs into indexes.
+			- Provides RBAC access to the logs.
+			- Provides data redundancy.
+		collection
+		Implemented with Fluentd, the collector collects node and application logs, adds pod and namespace metadata, and stores them in the logStore. 
+		The collector is a DaemonSet, so there is a Fluentd pod on each node.
+		visualization
+		The centralized web UI from Kibana displays the logs and provides a way to query and chart the aggregated data.
+		event routing
+		The Event Router monitors the OpenShift events API and sends the events to STDOUT so the collector can forward them to the logStore. 
+		The events from OpenShift are stored in the infra index in Elasticsearch.
+	3. Installing Elasticsearch Operator
+		
 
 	UPDATE OPENSHIFT
 	1. Over-the-Air updates (OTA)
@@ -1452,7 +1939,8 @@ POD and SERVICE NETWORK
 		The machine reboots and implements a rolling update to ensure that the cluster capacity is minimally impacted.
 
 
-	Continous Integration (CI) and Continous Deployment (CD)
+	Continous Integration (CI) and Continous Deployment (CD) 
+	- workwell with openshift imperative commands
 	1. Continous Integration
 		- Build Software
 			building a software piece from its source code and any required dependencies, such as programming libraries
@@ -1508,3 +1996,102 @@ POD and SERVICE NETWORK
 				Some directives, for example agent, can occur at different levels inside a pipeline, for example, at either pipeline or stage.
 			Scripted pipelines 	= start with node directive and define imperative script using Groovy
 			Declarative pipeline	= start with pipeline using domain-scale-language (DSL)
+		- Deployment
+			Patern	: 
+				- each development group inside an organization manages its own Jenkins instance, allow jenkins to projjects
+				- ne or more dedicated Jenkins instances with either cluster administrator privileges or custom roles that allow limited access to a few cluster operators. 
+			Configuring :
+				- Web-UI (Manual)
+				- Triggering Pipeline
+						- pollSCM takes a crontab expression to check a VCS repository periodically for changes. 
+						  When it finds changes (new commits or merges) it starts a new build.
+						- cron starts new builds according to a crontab expression. 
+						  It starts a new build periodically and unconditionally.
+						- upstream starts a pipeline build after another pipeline completes a build. 
+						  It is a way of concatenating multiple pipelines into a larger workflow.
+							triggers {
+							  pollSCM ('H/20 * * * *')
+							  upstream (upstreamProjects: 'library/main', threshold: hudson.model.Result.SUCCESS)
+							}
+				- Web Hook
+					Jenkins URLs that embed a random secret for authentication and the name of a VCS repository. 
+				- Agent
+							agent {
+					 		 node {
+					   		   label 'nodejs'
+						  	 }
+							}
+				- Option
+					disableConcurrentBuilds = prevents multiple builds of the same pipeline from building in parallel. 
+								  For example, it avoids concurrent and conflicting updates to the same cluster operator in a GitOps pipeline. 
+								  With a CI/CD workflow, it could prevent concurrent updates to the same test database.
+					buildDiscarder		= removes old builds, their logs, and their artifacts from the Jenkins instance. 
+								  If you do not discard these, then your master node could fill up all its configuration folder volume.
+					timeout 		= puts a time limit for the duration of a build. If a build takes longer than the designated time limit, then it is aborted and reported as failed.
+							options {
+							  buildDiscarder (logRotator (numToKeepStr: '30', artifactNumToKeepStr: '30'))
+							  disableConcurrentBuilds ()
+							  timeout (time: 1, unit: 'HOURS')
+							}
+				- Stages
+					The when directive allows a stage to be executed or skipped under some conditions, for example:
+					branch		= specifies the name of a branch that runs the stage in a multibranch pipeline.
+					changeset	= specifies that the stage runs for changes affecting a set of files from VCS. 
+							  File changes are specified using Maven file set syntax.
+					expression	= allows using a Groovy expression to refer to values of parameters and environment variables.
+							when {
+							  allOf {
+							    branch 'master'
+							    changeset '*/.js'
+							  }
+							}
+		- Roles Jenkins
+			 admin
+				Manage the Jenkins instance.
+			edit
+				Create and edit projects in the Jenkins instance.
+			view
+				View status, logs, and artifacts of builds from the Jenkins instance.
+		- Pipeline Project
+			Jenkins UI 	: manage pipeline projects and builds or to add plug-ins, such as the Configuration as Code (CasC) plug-in.
+		- Project types 
+			Pipeline
+			  Runs a pipeline taking as input a single branch from a version control system repository.
+			Multibranch pipeline
+			  Automatically creates new projects when new branches are detected in a version control system repository. 
+			  All these projects share the same pipeline definition that must be flexible enough to avoid conflicts between builds in different branches.
+		- Jenkins API
+			curl --user 'jenkins-user:token' https://jenkins-host/resource-path
+		- DSL CI/CD
+			Characteristic
+			- The DSL always assumes a current project reads back all resources it creates or changes. 
+			  It forces you to break commands that manipulate resources from different namespaces into multiple steps.
+			- That behavior works for CI/CD pipelines because they usually build and deploy a single application that lives inside a single OpenShift project.
+			- GitOps pipelines frequently mix namespaced and non-namespaced resources, or resources from multiple namespaces (of multiple operators), that a single oc apply command can manage.
+			- The DSL increases verbosity for simple declarative GitOps workflows because it is designed for scripted pipelines and requires adding script directives to declarative pipelines.
+			- Even if your pipeline never changes OpenShift credentials (it runs as the Jenkins service account) and never changes the project, the DSL requires withCluster and withProject Groovy blocks, further increasing verbosity.
+			Pipeline
+				stage ('Apply resources') {
+				  steps {
+				    script {
+				      openshift.withCluster () {
+				        openshift.withProject ('openshift-config') {
+				          openshift.apply ('-k config')
+				        }
+				      }
+				    }
+				  }
+				}
+				--or--
+				stage ('Apply resources') {
+				  steps {
+				    sh 'oc apply -k config'
+				  }
+				}
+	GITOPS (Infrastructure-as-code)
+		- All configurations should come from files that are versioned, tested, and reviewed, such as source code in a Continuous Integration and Continuous Deployment (CI/CD) process.
+		- do not produce stand alone artifacts, such as binary executables, that you can store, copy, compare, and replace. 
+		- Configurations change the state of a live system.
+		- Similar to Ansible Playbooks
+		1. Benefits
+			 - Easier if configuration files for cluster operators, custom resources, and standard resources, such as configuration maps and cron jobs, are stored as either YAML or JSON files in a version control system. 
