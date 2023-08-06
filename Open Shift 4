@@ -1901,7 +1901,241 @@ POD and SERVICE NETWORK
 		The Event Router monitors the OpenShift events API and sends the events to STDOUT so the collector can forward them to the logStore. 
 		The events from OpenShift are stored in the infra index in Elasticsearch.
 	3. Installing Elasticsearch Operator
-		
+		Each node in the Elasticsearch cluster is deployed with a PVC named and managed by the Elasticsearch
+		A unique Deployment object is created for each Elasticsearch node to ensure that each Elasticsearch node has a storage volume of its own.
+		Elasticsearch Operator must be installed in a namespace other than openshift-operators
+			---
+			apiVersion: v1
+			kind: Namespace
+			metadata:
+			  name: openshift-operators-redhat
+			  annotations:
+			    openshift.io/node-selector: ""
+			  labels:
+			    openshift.io/cluster-monitoring: "true"
+			---
+			apiVersion: operators.coreos.com/v1
+			kind: OperatorGroup
+			metadata:
+			  name: openshift-operators-redhat
+			  namespace: openshift-operators-redhat
+			spec: {}
+			---
+			apiVersion: operators.coreos.com/v1alpha1
+			kind: Subscription
+			metadata:
+			  name: "elasticsearch-operator"
+			  namespace: "openshift-operators-redhat"
+			spec:
+			  channel: "4.6"
+			  installPlanApproval: "Automatic"
+			  source: "redhat-operators"
+			  sourceNamespace: "openshift-marketplace"
+			  name: "elasticsearch-operator"
+			---
+			apiVersion: rbac.authorization.k8s.io/v1
+			kind: Role
+			metadata:
+			  name: prometheus-k8s
+			  namespace: openshift-operators-redhat
+			rules:
+			  - apiGroups:
+			      - ""
+			    resources:
+			      - services
+			      - endpoints
+			      - pods
+			    verbs:
+			      - get
+			      - list
+			      - watch
+			---
+			apiVersion: rbac.authorization.k8s.io/v1
+			kind: RoleBinding
+			metadata:
+			  name: prometheus-k8s
+			  namespace: openshift-operators-redhat
+			roleRef:
+			  apiGroup: rbac.authorization.k8s.io
+			  kind: Role
+			  name: prometheus-k8s
+			subjects:
+			  - kind: ServiceAccount
+			    name: prometheus-k8s
+			    namespace: openshift-operators-redhat
+			---
+			oc get csv -A
+			---
+			apiVersion: v1
+			kind: Namespace
+			metadata:
+			  name: openshift-logging
+			  annotations:
+			    openshift.io/node-selector: ""
+			  labels:
+			    openshift.io/cluster-logging: "true"
+			    openshift.io/cluster-monitoring: "true"
+			---
+			apiVersion: operators.coreos.com/v1
+			kind: OperatorGroup
+			metadata:
+			  name: cluster-logging
+			  namespace: openshift-logging
+			spec:
+			  targetNamespaces:
+			    - openshift-logging
+			---
+			apiVersion: operators.coreos.com/v1alpha1
+			kind: Subscription
+			metadata:
+			  name: cluster-logging
+			  namespace: openshift-logging
+			spec:
+			  channel: "4.6"
+			  name: cluster-logging
+			  source: redhat-operators
+			  sourceNamespace: openshift-marketplace
+			---
+			oc get csv -n openshift-logging
+		4. Configuration ElasticSearch
+			Redundancy mode 	Description
+			FullRedundancy 		Elasticsearch copies the shards for each index to every data node in the cluster. Fully replicated shards provide the most redundancy to protect from accidental data loss.
+			MultipleRedundancy 	The primary shards for each index are replicated to half of the data nodes. This provides a good balance between performance and redundancy.
+			SingleRedundancy 	Each primary shard is copied once to another node. If at least two data nodes remain available, then the logs are recoverable. If the Elasticsearch cluster has 5 or more nodes, SingleRedundancy performs better than MultipleRedundancy.
+			ZeroRedundancy 		Shards are not replicated. Data loss could happen if a node fails.
+				oc get clusterlogging -n openshift-logging instance -o yaml
+				---
+				apiVersion: "logging.openshift.io/v1"
+				kind: "ClusterLogging"
+				metadata:
+				  name: "instance"
+				  namespace: "openshift-logging"
+				spec:
+				  managementState: "Managed"
+				  logStore:
+				    type: "elasticsearch"
+				    elasticsearch:
+				      nodeCount: 3
+				      nodeSelector:
+				        node-role.kubernetes.io/infra: ''
+				      storage:
+				        storageClassName: "local-blk"
+				        size: 50G
+				      redundancyPolicy: "MultipleRedundancy"
+				  visualization:
+				    type: "kibana"
+				    kibana:
+				      nodeSelector:
+				          node-role.kubernetes.io/infra: ''
+				      replicas: 1
+				  collection:
+				    logs:
+				      type: "fluentd"
+				      fluentd: {}
+		5. Role
+			Master
+			Client
+			Data
+		6. Event Router
+			Kubernetes events are saved in the cluster etcd instance.
+			The event router monitors the events API and prints events to standard output so Fluentd can collect them and send them to Elasticsearch. 
+			Elasticsearch stores the events in the infra index.
+				To install the Event Router:
+					- Download the template from OpenShift Container Platform documentation.
+					- Use the oc process command to create a manifest file for the Event Router.
+					- Use the oc apply command to apply the manifest resources to the OpenShift cluster.
+		7. Index Pattern
+			Every log message is converted into a JSON document that Elasticsearch stores in an index.
+			Elasticsearch applies role-based access control (RBAC) rules to indexes based on OpenShift project permissions. 
+			Indexes:
+				infra-
+				An index with this prefix stores pod log messages for infrastructure projects. 
+				An infrastructure project includes project names that have a openshift- or kube- prefix.
+				app-
+				An index with this prefix stores pod log messages for all projects except infrastructure projects.
+				audit-
+				An index with this prefix stores audit log messages. 
+				Audit logs allow you to review the OpenShift API activity of a user, administrator, or OpenShift component (such as a service account).
+		8. Logging Alert
+			If a component of the cluster logging infrastructure fails, then cluster users lose the capability to diagnosis application issues from logs.
+			Fluentd is the component collecting the logs.
+			Prometheus scrapes metrics from Fluentd, such as availability, queue length, and errors. 
+			After collecting the logs, Fluentd forwards them to Elasticsearch for storage.
+			Prometheus also scrapes metrics from Elasticsearch, such as health and resource utilization.
+			If Elasticsearch consumes too much disk space, consider:
+				Modifying log retention.
+				Extending Elasticsearch storage.
+			Alert
+				Alert					Description
+				FluentdErrorsHigh 			Fluentd is reporting more than one error per minute.
+				FluentdQueueLengthIncreasing 		The log buffer is growing faster than Fluentd can process.
+				ElasticsearchNodeDiskWatermarkReached 	Available disk space is low.
+				ElasticsearchProcessCPUHigh 		The CPU usage is above 90%.
+			oc get prometheusrules -n openshift-logging
+			--- (es_fs_path_available_bytes)
+			oc get prometheusrules -n openshift-logging fluentd -o yaml
+			kind: PrometheusRule
+			...output omitted...
+			spec:
+			  groups:
+			  - name: logging_fluentd.alerts
+			    rules:
+			    - alert: FluentdNodeDown
+			...output omitted...
+			    - alert: FluentdQueueLengthIncreasing
+			      annotations:
+			        message: In the last 12h, fluentd {{ $labels.instance }} buffer queue length
+			          constantly increased more than 1. Current value is {{ $value }}.
+			        summary: Fluentd file buffer usage issue
+			      expr: |
+			        delta(fluentd_output_status_buffer_queue_length[1m]) > 1
+			      for: 12h
+			      labels:
+			        service: fluentd
+			        severity: critical
+		9. Elastic search Tools (run on elasticsearch pod)
+			 es_util
+				Queries the Elasticsearch REST endpoint.
+			es_cluster_health
+				Returns a JSON summary of the Elasticsearch cluster health.
+			oc exec -n openshift-logging -c elasticsearch elasticsearch-cdm-giqewkd9-1-5f8b46cdbb-qrqf7 -- es_cluster_health
+
+	RECOVERING FAILED WORKER NODES
+	1. Healthy Status
+	about the cluster and worker node health are essential to identifying a degraded environment.
+		oc get nodes <NODE>
+		oc adm top node <NODE>
+		oc describe node <NODE> | grep -i taint
+		oc whoami --show-console
+	2. Service Functionaility
+	Each worker node has two main services, kubelet and cri-o
+	More severe service issues might require direct access using CLI commands on the worker node, such as systemctl
+	Determine the appropriate method to manage the services on worker nodes:
+		The web console monitoring provides insight into unhealthy worker nodes, but might not give specific details for every scenario.
+		Use the oc client commands to gather as much information as available for the given symptoms.
+		If you cannot correct the issue using other means, then connect directly to the worker node using SSH to mitigate the issue.
+	Navigate the web console information alerting administrators to node issues.
+	3. Woker Node Performance
+	When OpenShift detects an adverse node condition, OpenShift applies a corresponding taint to the node.
+	A taint that represents an adverse node condition consists of a key value pair directing cluster interactions with the worker node.
+	For example, the node.kubernetes.io/disk-pressure
+	Effect value		Description
+	NoSchedule		New pods that do not match the taint are not scheduled on the node.
+				Pods that are running on the node continue running.
+	PreferNoSchedule	New pods that do not match the taint are only scheduled on the node when no other suitable node can be located.
+				Pods that are running on the node continue running.
+	NoExecute		New pods that do not match the taint are not scheduled on the node.
+				Pods that are running on the node are removed and deployed on another suitable node.
+	4. Storage Capacity Issues
+	removing old logs or container images, instills behaviors that result in effective capacity management. 
+	Additionally, simulating disaster recovery scenarios and practicing troubleshooting skills directly correlates to overall better cluster health.
+	Large or numerous container images consume space and require proper footprint management to avoid worker node storage depletion. 
+	applications that are configured to utilize ephemeral storage allocated directly from the local disk of a worker node deplete available capacity.
+	One clue that OpenShift provides when worker node storage issues arise is the application of a disk-pressure:NoSchedule and/or disk-pressure:NoExecute taint.
+	Traditional system administration tools, such as the logrotate service, are invaluable for maintaining resource allocations.
+	Employing quotas to manage application consumption of resources is also prudent in large-scale environments. 
+	Curating container images and using good management practices to prune old, stale, or large images reduces storage constraints caused by the growth of the image footprints.
+		oc describe node <NODE_NAME>
 
 	UPDATE OPENSHIFT
 	1. Over-the-Air updates (OTA)
