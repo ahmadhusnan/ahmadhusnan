@@ -1,0 +1,445 @@
+OPENSHIFT 4 INSTALLATION PROCESS BAREMETAL
+1. Benefits
+    - Automates most of the installation steps to simplify the OpenShift installation process.
+    - Minimizes human errors during the installation.
+    - Applies OpenShift 4 best practices.
+    - Facilitates the integration with future automation efforts such as 
+        OpenShift Assisted Installer, Red Hat Advanced Cluster Management for Kubernetes (ACM), and cluster deployment integration into CI/CD pipelines.
+2. Ignition Configuration Files
+    - Prereq                    : 
+        GENERAL PREREQ
+            provision a bastion host
+            generate ssh key on bastion host
+            openshift-install binary on bastion host
+                Option	                        Description
+                help 	                        Prints help information.
+                explain -h 	                    Explains the fields related to each supported InstallConfig API.
+                explain installconfig 	        Explains the installconfig resource and its fields.
+                --log-level debug 	            Enables debug mode.
+                --dir 	                        Configures the directory path to store the generated assets.
+                create install-config 	        Creates installation configuration file install-config.yaml.
+                create manifests 	            Creates Kubernetes manifests.
+                create ignition-configs 	    Creates ignition configuration files.
+                create cluster 	                Deploys the cluster.
+                wait-for bootstrap-complete 	Waits until the bootstrap installation phase ends.
+                wait-for install-complete 	    Waits until the cluster install ends.
+                destroy cluster 	            Removes the cluster
+            download and install oc command on bastion host
+            get registry pull-secret
+            Openshift cluster nodes must have access to a Network Time Protocol (NTP) server.
+            Ensure that the infrastructure network firewall fulfills the OpenShift network access requirements.
+        FULL STACK PREREQ
+            Verify infrastructure permissions and quotas.
+            For cloud environments, a cloud account with required permissions and quotas is required.
+        PRE EXISTING
+            Configure network services.
+            Provide hardware (physical or virtual) for cluster nodes.
+            Install RHCOS on cluster nodes.
+        DNS PREREQ
+             configure the DNS service using DNS records. (<component>.<cluster_name>.<base_domain>:)
+                    <cluster_name> is the name of the cluster (for instance ocp4).
+                    <base_domain> is the cluster base domain configured in the install-config.yaml configuration file (for instance example.com).
+                    The reverse DNS records (PTR) are also required.
+            Component	    Record	                                Description
+            Kubernetes API	api.<cluster_name>.<base_domain>.	    DNS A/AAAA or CNAME and PTR records to identify the API load balancer for the control plane nodes (resolvable by both clients external to the cluster and from all the nodes within the cluster).
+            Kubernetes API	api-int.<cluster_name>.<base_domain>.	DNS A/AAAA or CNAME and PTR records to identify the API load balancer for the control plane nodes (resolvable from all the nodes within the cluster).
+            Routes	        *.apps.<cluster_name>.<base_domain>.	Wildcard DNS A/AAAA or CNAME record to identify the Application Ingress load balancer that targets the cluster nodes that run the ingress router pod (resolvable by both clients external to the cluster and from all the nodes within the cluster).
+            Cluster nodes	<name>.<cluster_name>.<base_domain>.	DNS A/AAAA or CNAME and PTR records to identify each cluster node, including bootstrap node (resolvable by the nodes within the cluster).
+                cat /etc/named.conf
+                ---
+                zone "example.com" {
+                    type master;
+                    file "example.com.db";
+                    allow-update { none; };
+                };
+                zone "50.168.192.in-addr.arpa" IN {
+                    type master;
+                    file "example.com.reverse.db";
+                    allow-update { none; };
+                };
+                cat /var/named/example.com.db
+                dig @dns.ocp4.example.com api.ocp4.example.com
+                ---
+                $TTL  1D
+                @     IN  SOA dns.ocp4.example.com. root.example.com. (
+                                2019022400 ; serial
+                                3h         ; refresh
+                                15         ; retry
+                                1w         ; expire
+                                3h         ; minimum
+                              )
+                              IN NS dns.ocp4.example.com.
+                dns.ocp4      IN A 192.168.50.254
+                api.ocp4      IN A 192.168.50.254
+                api-int.ocp4  IN A 192.168.50.254
+                *.apps.ocp4   IN A 192.168.50.254
+                bootstrap.ocp4 IN A 192.168.50.9
+                master01.ocp4 IN A 192.168.50.10
+                master02.ocp4 IN A 192.168.50.11
+                master03.ocp4 IN A 192.168.50.12
+                worker01.ocp4 IN A 192.168.50.13
+                worker02.ocp4 IN A 192.168.50.14
+                cat /var/named/example.com.reverse.db
+                dig @dns.ocp4.example.com -x 192.168.50.254
+                ---
+                $TTL  1D
+                @     IN  SOA dns.ocp4.example.com. root.example.com. (
+                                2019022400 ; serial
+                                3h         ; refresh
+                                15         ; retry
+                                1w         ; expire
+                                3h         ; minimum
+                              )
+                          IN NS dns.ocp4.example.com.
+                254  IN PTR api.ocp4.example.com.
+                254  IN PTR api-int.ocp4.example.com.
+                9  IN PTR bootstrap.ocp4.example.com.
+                10 IN PTR master01.ocp4.example.com.
+                11 IN PTR master02.ocp4.example.com.
+                12 IN PTR master03.ocp4.example.com.
+                13 IN PTR worker01.ocp4.example.com.
+                14 IN PTR worker02.ocp4.example.com.
+            FIREWALL
+                Protocol	Port	        Description
+                WORKER & MASTER
+                ICMP	    N/A	Network     reachability tests
+                TCP	        9000-9999	    Host level services, including the node exporter on ports 9100-9101 and the Cluster Version Operator on port 9099
+                TCP	        10250-10259	    The default ports that Kubernetes reserves
+                TCP	        10256	        openshift-sdn
+                UDP	        4789	        VXLAN and Geneve
+                UDP	        6081	        VXLAN and Geneve
+                UDP	        9000-9999	    Host level services, including the node exporter on ports 9100-9101
+                TCP/UDP	    30000-32767	    Kubernetes node port
+                MASTER
+                TCP	        2379-2380	etcd server, peer, and metrics ports
+                TCP	6443	Kubernetes API
+                LOAD BALANCER
+                TCP Port	Back-end nodes (pool members)	                Internal access	    External access	    Description
+                6443	    Bootstrap (temporary) and control plane nodes	Yes	                Yes	                Kubernetes API server
+                22623	    Bootstrap (temporary) and control plane nodes	Yes	                No	                Machine Config server
+                INGRESS LOAD BALANCER
+                443	        Cluster nodes that run the Ingress router pods	Yes	                Yes	                HTTPS traffic
+                80	        Cluster nodes that run the Ingress router pods	Yes	                Yes	                HTTP traffic
+    - Ignition Files Purpose    : bootstarp, control plane nodes, and compute nodes
+    - Target                    : RHCOS
+    - System Target             : Configures storage, systemd units, certificates, users, and custom configurations on RHCOS systems when they first boot.
+    - File Load from            : Local Disk, Cloud metadata, Over the Network using HTTP or HTTPS
+    - File                      : install-config.yaml
+    - Ignition File             : bootstrap.ign, master.ign, worker.ign
+    - Process
+        openshift-installer (create manifest from install-config.yaml)
+                            (create ignition files from kubernetes manifest)
+3. ignition files
+        - Is based on the standard Linux startup process.
+        - Runs on physical nodes, virtual nodes, and cloud instances.
+        - Unifies the kickstart and cloud-init features on the RHCOS system boot.
+        - Is executed in the initramfs step of the RHCOS boot process.
+        - Consumes the ignition configuration files generated with the openshift-install command and the machine config operator (MCO).
+            The openshift-install command uses the ignition configuration files to set the exact state of each node upon installation.
+            The machine config operator applies other changes to the nodes after installation, such as applying new certificates or ssh keys.
+4. Process check            :
+        cat bootstrap.ign | jq .
+        cat /boot/ignition/config.ign
+        journalctl -t ignition
+5. Scheme                    :
+        Openshift Installer <Load> 
+            install-config.yaml <Start> 
+                bootstrap.ign <Create> 
+                    Bootstrap Node <Load master.ign from MCS(Machine Configuration Server)> 
+                        Temporary Control Plane <install etcd operator> 
+                            3 Control Plane <has etcd and MCS>
+                                Bootstrap Node <shut down>
+                                    Worker Node <install from worker.ign>
+6. Spec Installation        :
+        Maximum 3 Control Plane Node
+        Maximum 2000 Comupute Node
+        At least two compute Node for High Availability
+7. Method                    :
+        Full-stack automation (Installer-provisioned Infrastructure)
+        Pre-existing Infra
+            Action	                            Full-stack Automation	    Pre-existing Infrastructure
+            Build network	                    Installer	                User
+            Setup load balancer	                Installer	                User
+            Configure DNS	                    Installer	                User
+            Hardware or VM provisioning	        Installer	                User
+            OS installation	                    Installer	                User
+            Generate ignition configs	        Installer	                Installer
+            Control plane node OS support	    Installer: RHCOS	        User: RHCOS
+            Compute node OS support	            Installer: RHCOS (1)	    User: RHCOS + RHEL 7 (1)
+            Configure persistent storage 
+            for the internal registry	        Installer (2)	            User
+            Configure dynamic storage provider	Installer (2)	            User
+            Configure node provisioning and 
+            cluster autoscaling	                Installer	                Only for providers with OpenShift Machine API support (3)
+        Connected (quai.io or registry.redhat.io)
+        Disconnected
+            - Requires mirroring images to an API schema2 specification-compliant local container registry.
+            - Uses the exact version of images provided in the payload by digest.
+            - Requires access to the Internet to mirror the container images from the source registries to the local container registry.
+            - Requires mirroring the images required for the OpenShift installation and subsequent product updates to the local container registry.
+8. Install Command
+        mkdir ${HOME}/ocp4-cluster
+        cat ${HOME}/ocp4-cluster/install-config.yaml
+        openshift-install create install-config > --dir=${HOME}/ocp4-cluster
+        openshift-install create manifests > --dir=${HOME}/ocp4-cluster
+        find ${HOME}/ocp4-cluster/manifests
+        cd ${HOME}/ocp4-cluster/manifests/openshift
+        cat << EOF > 99-openshift-machineconfig-master-kargs.yaml
+        openshift-install create ignition-configs > --dir=${HOME}/ocp4-cluster
+        find ${HOME}/ocp4-cluster -name '*.ign' | xargs ls -lrt
+        openshift-install create cluster > --dir=${HOME}/ocp4-cluster --log-level=debug
+        openshift-install wait-for bootstrap-complete > --dir=${HOME}/ocp4-cluster --log-level=debug
+        openshift-install wait-for install-complete > --dir=${HOME}/ocp4-cluster --log-level=debug
+        MONITORING
+        export KUBECONFIG=${HOME}/ocp4-cluster/auth/kubeconfig
+        watch 'oc get clusterversion; oc get clusteroperators; > oc get pods --all-namespaces | grep -v -E "Running|Completed"; oc get nodes'
+        oc get events -A -w
+9. Troubeshooting
+        Bootstrap (two systemd service[release image & bootkube])
+            must get the logs from the bootstrap node using SSH.
+                ssh -i ${HOME}/.ssh/ocp4-cluster core@192.168.50.9
+                journalctl -b -f -u release-image.service -u bootkube.service
+                sudo bash
+                crictl ps -a
+                crictl logs <container_id>
+10. Verifiying Installation
+        export KUBECONFIG=${HOME}/ocp4-cluster/auth/kubeconfig
+        oc debug node/master01
+            chroot /host
+            cat /etc/chrony.conf
+            sudo chronyc tracking
+        oc get nodes
+        oc adm top node
+        oc get csr | grep Pending
+        oc get clusterversion
+        oc get clusteroperators
+        oc get pods --all-namespaces | grep -v -E 'Running|Completed'
+        oc get pods -n openshift-etcd | grep etcd-master
+        oc rsh -n openshift-etcd etcd-master01
+            etcdctl endpoint health --cluster
+        dig api.ocp4.example.com
+        curl -k https://api.ocp4.example.com:6443/version
+        curl -kIs https://console-openshift-console.apps.ocp4.example.com
+        firefox https://console-openshift-console.apps.ocp4.example.com
+        oc -n openshift-image-registry get deployment.apps/image-registry
+        oc -n openshift-image-registry  get pods -o wide
+        oc debug node/master01
+            chroot /host
+            curl -kIs https://image-registry.openshift-image-registry.svc:5000/healthz
+        oc get configs.imageregistry.operator.openshift.io cluster -o yaml
+        dig test.apps.ocp4.example.com
+        oc get routes -A | grep downloads
+        curl -kIs https://downloads-openshift-console.apps.ocp4.example.com
+        oc -n openshift-ingress get deployment.apps/router-default
+        oc -n openshift-ingress  get pods -o wide | grep router
+        oc get pvc
+        oc rsh httpd
+            df -h
+        oc new-project validate
+        oc get pods -n validate
+        oc get routes -n validate
+        oc get network.config/cluster -o yaml
+        oc get pods -n openshift-etcd | grep etcd-master
+        oc rsh -n openshift-etcd etcd-master01
+            etcdctl check perf --load="s"
+            etcdctl check perf --load="m"
+            etcdctl check perf --load="l"
+        oc debug node/master01
+            chroot /host
+            podman run --volume /var/lib/etcd:/var/lib/etcd:Z quay.io/openshift-scale/etcd-perf
+        oc get machines -n openshift-machine-api
+        oc get machinesets -n openshift-machine-api
+        oc get nodes --label-columns failure-domain.beta.kubernetes.io/region,failure-domain.beta.kubernetes.io/zone
+        oc scale machineset  ocp4-aws-9r678-worker-us-east-2c --replicas=2 -n openshift-machine-api
+        oc get machinesets -n openshift-machine-api
+        export KUBECONFIG=${HOME}/ocp4-cluster/auth/kubeconfig
+        cd ${HOME}
+        oc adm must-gather
+        tar cvaf must-gather.tar.gz must-gather.local.1227184995617480385/
+11. Remove Cluster
+        openshift-install destroy cluster --dir=${HOME}/ocp4-cluster
+12. MUST GATHER IMAGES
+        Image	                                                                            Purpose
+        registry.redhat.io/container-native-virtualization/cnv-must-gather-rhel8:v2.5.2	    Data collection for OpenShift Virtualization
+        registry.redhat.io/openshift-serverless-1/svls-must-gather-rhel8	                Data collection for OpenShift Serverless
+        registry.redhat.io/openshift-service-mesh/istio-must-gather-rhel7	                Data collection for Red Hat OpenShift Service Mesh
+        registry.redhat.io/rhcam-1-2/openshift-migration-must-gather-rhel8	                Data collection for migration-related information
+        registry.redhat.io/ocs4/ocs-must-gather-rhel8	                                    Data collection for Red Hat OpenShift Container Storage
+        registry.redhat.io/openshift4/ose-cluster-logging-operator	                        Data collection for Red Hat OpenShift cluster logging
+
+OPENSHIFT HOSTED OFFERING
+    Hosted offering	                    Cloud hosted	Billed by	                                        Managed by	            Supported by
+    Microsoft Azure Red Hat OpenShift	Azure	        Microsoft	                                        Red Hat and Microsoft	Red Hat and Microsoft
+    Red Hat OpenShift Dedicated	        AWS or GCP	    Red Hat (OpenShift), AWS or GCP (Infrastructure)	Red Hat	                Red Hat
+    Red Hat OpenShift on IBM Cloud	    IBM Cloud	    IBM	                                                IBM	                    Red Hat and IBM
+    Red Hat OpenShift Service on AWS	AWS	            AWS	                                                Red Hat and AWS	        Red Hat and AWS            
+
+     	                    Red Hat hosted services	                                    Third parties managed Kubernetes services
+Operating system	        RHEL/RHCOS	                                                Varies
+Platform	                Kubernetes + OCP	                                        Kubernetes
+Cross cloud portability	    Portable to other OS or Kubernetes	                        Kubernetes part only, other services are vendor-specific
+Identity and Auth	        LDAP, Google, OpenID, GitHub, GitLab	                    Vendor specific (IAM, Azure AD, Google/Cloud IAM)
+Logs	                    EFK, Log Forwarding (OpenShift Dedicated) or Azure Monitor	Nothing by default
+Metrics	                    Prometheus and Grafana or Azure Monitor	                    Nothing by default
+CLIs and APIs	            oc and kubectl 	                                            kubectl + vendor-specific for infrastructure
+Cluster Network	            Managed by Red Hat	                                        Generally self-managed
+CI/CD	                    S2I, Image Streams, Jenkins, Tekton	                        Nothing by default
+Catalog	Operator            Hub, Red Hat Marketplace	                                Vendor specific or community sources
+Container Registry	        Included	                                                Nothing by default
+Support	                    24x7 Premium Support	                                    Basic support, can purchase higher levels
+Updates	                    Managed by Red Hat	                                        Mix of provider automated + customer manual activities
+Snapshots	                Managed by Red Hat for platform and PVs	                    Managed by the customer
+Workload notifications	    Grafana and Prometheus (OpenShift Dedicated), OCP Web Console	Nothing by default
+Platform notifications	    Status Portal	                                            Vendor specific dashboards
+
+OPENSHIFT 4 INSTALLATION PROCESS CLOUD
+1. installing OpenShift on an IaaS Cloud Provider using the full-stack automation method
+        OS images
+        VMs or cloud instances
+        Load balancers
+        Storage
+        Networking
+2. Cloud Provider
+        Amazon Web Services (AWS)
+        Red Hat OpenStack Platform (RHOSP)
+        Microsoft Azure (MS Azure)
+        Google Cloud Platform (GCP)
+3. Resources Creation Stage
+        Cluster network
+        Cluster network services
+        Cluster network gateway
+        Cluster load balancers
+        Cluster storage
+        Bootstrap node
+            The bootstrap node starts the Kubernetes API.
+            The control plane nodes try to fetch their ignition configuration files from the Kubernetes API.
+            When the Kubernetes API becomes available on the bootstrap node, the control plane nodes fetch their ignition configuration files successfully and finish installing.
+            The following diagram explains the architecture of an OpenShift deployment on a generic cloud provider at the bootstrap stage.
+        Control plane nodes
+            The production control plane runs on the control plane nodes.
+            The OpenShift API load balancer (OpenShift API LB) uses the control plane nodes as the back-end pool members.
+            The installer creates and installs the compute nodes. The compute nodes join the cluster.
+            The OpenShift application Ingress load balancer (OpenShift APP Ingress LB) uses the compute nodes as the back-end pool members.
+            The installer publishes the internal load balancers IP addresses on the cloud provider public network (optional).
+            In parallel, the cluster version operator (CVO), running on the production control plane, installs the operators that build the cluster, and then finishes the installation.
+            The installer configures the OpenShift internal registry to use the cloud object storage.
+            The installer configures a dynamic storage provider to provide persistent storage for the containerized applications using the cloud storage service.
+            If the cloud provider services have OpenShift Machine API integration support, then the installer configures node provisioning and cluster autoscaling.
+4. Comparing IaaS Cloud Providers Terminology
+            OpenShift resources	        AWS provider	RHOSP provider	            Azure provider	    GCP provider
+            Internal registry storage	Amazon S3	    Swift	                    Azure Blob	        Google Cloud Object Storage
+            Persistent volume	        Amazon EBS	    Cinder	                    Azure Disk	        Google Cloud Block Storage
+            RHCOS images	            Amazon AMI	    Glance	                    Azure Images (VHD)	Google Compute Engine Images
+            Networking	                Amazon VPC	    Neutron	                    Azure VNet	        Google VPC
+            SDN / OVN	                Amazon VPC	    Neutron + Kuryr	            Azure VNet	        Google VPC
+            Load balancer	            Amazon ELB	    Static pods/Octavia LBaaS	Azure LB	        Google Networking Suites
+            DNS	                        Amazon Route53	External	                Azure DNS	        Google Cloud DNS
+            Compute instances	        Amazon EC2	    Nova	                    Azure Compute	    Google Compute Engine
+5. Sizing Cloud Provider
+    AZURE
+        Resource	            Required	Default Azure limit
+        vCPU	                40	        20 per region
+        VNet	                1	        1000 per region
+        Network interfaces	    6	        65536
+        Network security groups	2	        5000
+        Network load balancers	3	        1000 per region
+        Public IP addresses (PIP)	3	    -
+        Private IP addresses	7	        -
+        Size	            vCPU	RAM (GiB)	Max SSD IOPS	Max SSD throughput
+        Standard_D4s_v3	    4	    16	        8000	        100 MiB/s
+        Standard_D8s_v3	    8	    32	        16000	        200 MiB/s
+        Standard_D16s_v3	16	    64	        32000	        400 MiB/s
+        Standard_D32s_v3	32	    128	        64000	        800 MiB/s
+    OPENSTACK
+        Resource	                Value
+        Floating IP addresses	    3 - plus the expected number of Services of LoadBalancer type
+        Ports	                    1500 - 1 needed per pod
+        Routers	                    1
+        Subnets	                    250 - 1 needed per namespace/project
+        Networks	                250 - 1 needed per namespace/project
+        RAM	                        112 GB
+        vCPUs	                    28
+        Volume storage	            275 GB
+        Instances	                7
+        Security groups	            250 - 1 needed per service and NetworkPolicy
+        Security group rules	    1000
+        Load balancers	            100 - 1 needed per service
+        Load balancer listeners	    500 - 1 needed per service-exposed port
+        Load balancer pools	        500 - 1 needed per service-exposed port
+    AWS
+        Resource	                        Required	Default AWS limit
+        Instances	                        7	        Varies
+        Elastic IPs	                        1	        5 EIPs per account
+        Virtual Private Clouds (VPCs)	    5	        5 VPCs per region
+        Elastic Load Balancing (ELBs)	    3	        20 per region
+        NAT Gateways	                    5	        5 per availability zone
+        Elastic Network Interfaces (ENIs)	At least 12	350 per region
+        VPC Gateway	                        20	        20 per account
+        S3 buckets	                        99	        100 buckets per account
+        Security Groups	                    250	        2500 per account
+        Concept
+            Node	                    Flavor	    vCPU	RAM (GiB)
+            Control plane node (etcd)	m4.xlarge	4	    16
+            Compute node	            m4.large	2	    8
+        Small Cluster
+            Node	                    Flavor	    vCPU	RAM (GiB)
+            Control plane node (etcd)	m5.2xlarge	8	    32
+            Compute node	            m5.4xlarge	16	    64
+        Medium Cluster
+            Node	                    Flavor	    vCPU	RAM (GiB)
+            Control plane node (etcd)	r5.4xlarge	16	    128
+            Compute node	            m5.8xlarge	32	    128
+        Large Cluster
+            Node	                    Flavor	    vCPU	RAM (GiB)
+            Control plane node (etcd)	r5.8xlarge	32	    256
+            Compute node	            m5.12xlarge	48	    192
+        Volume type	                gp2	                            gp3	                            io1	                                                    io2 Block Express
+        Category	                General Purpose                 SSD	General Purpose SSD	        Provisioned IOPS SSD	                                Provisioned IOPS SSD
+        Use case	                Low-latency interactive apps	Low-latency interactive apps	Sub-millisecond latency with sustained IOPS performance	Sub-millisecond latency with sustained IOPS performance
+        Volume size	                1 GiB - 16 TiB	                1 GiB - 16 TiB	                4 GiB - 16 TiB	                                        4 GiB - 64 TiB
+        Max IOPS per volume	        16000	                        16000	                        64000	                                                256000
+        Max throughput per volume	250 MiB/s	                    1000 MiB/s	                    1000 MiB/s	                                            4000 MiB/s
+
+OPENSHIFT 4 INSTALLATION PROCESS VIRTUALIZATION
+1.  server-based environments.
+        RHV
+        Microsoft Hyper-V
+        vSphere ESXi
+2. software layer hypervisors:
+        VMware Workstation
+        Oracle VirtualBox      
+3. Full-Stack vs Pre-existing
+    Action	                                        Full-stack Automation	Pre-existing Infrastructure
+    Build network	                                Installer	            User
+    Setup load balancer	                            Installer	            User
+    Configure DNS	                                Installer	            User
+    Hardware or VM provisioning	                    Installer	            User
+    OS installation	                                Installer	            User
+    Generate ignition configs	                    Installer	            Installer
+    OS support	                                    Installer: RHCOS	    User: RHCOS
+    Configure persistent storage for the internal registry	Installer	    User
+    Configure dynamic storage provider	            Installer	            User
+    Configure node provisioning and autoscaling	    Yes	                    Only for providers with OpenShift Machine API support.
+4. Storage Access Mode
+    Volume Plug-in	ReadWriteOnce	ReadOnlyMany	ReadWriteMany
+    VMware vSphere	X	 	 
+    Cinder	        X	 	 
+    NFS	            X	            X	            X
+
+OPENSHIFT 4 INSTALLATION PROCESS WITHOUT INFRASTRUCTURE PROVIDER
+1. Reasons
+    In some cases, administrators have limited access to the infrastructure services and components required for performing a full-stack installation.
+    In other cases, administrators need more flexibility for installing OpenShift in a heterogeneous environment.
+2. Necessary resources
+    NTP (mandatory): can be a server running inside the cluster or a public NTP server.
+    DHCP (optional): administrators can use a DHCP server to assign IPs dynamically from a predefined range. Alternatively, administrators can manually assign the IPs to the servers.
+    PXE (optional): administrators can use a PXE server for network provisioning. Alternatively, you can install the hosts using an ISO image.
+    DNS (mandatory): all the servers in the cluster must be able to resolve the records from the following: table.
+    Load balancers (mandatory): serves the API ports and the application ports, as shown in the following: documentation.
+    Network connectivity (mandatory): the machines in the cluster must communicate with each other using the following ports and protocols: table.
+3. Utility server
+    dhcpd: the DHCP server
+    named: the DNS server
+    tftp: the server for PXE booting
+    haproxy: the load balancer for API and application services
+    httpd: the HTTP server, used as a file server
