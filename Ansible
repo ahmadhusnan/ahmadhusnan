@@ -133,7 +133,8 @@ AD HOC COMMAND
 	2. ansible all -m ping
 	3. ansible <hosts> -m ping
 	4. ansible -m user -a 'name=newbie uid=4000 state=present' hostname
-	
+		check system module in ansible website
+
 	MODULE NAME	DESCRIPTION
 	k8s 		Manages Kubernetes objects. This module has access to all Kubernetes APIs, allowing you to create, update, or delete Kubernetes objects.
 	k8s_info 	Retrieves information about Kubernetes objects.
@@ -239,3 +240,16 @@ RUNNING PLAYBOOK
 	SYNTAX CHECK
 		ansible-playbook --syntax-check webserver.yml
 	DRY RUN (info bakal ada perubahan apa, gk langsung implementasi)
+		ansible-playbook -C webserver.yml
+	ANSIBLE CONFIG (/etc/ansible/ansible.cfg or )
+		remote_user: remoteuser
+		become: true
+		become_method: sudo
+		become_user: privileged_user
+	MANAGING VARIABLES
+		VALID VARIABLE NAMES = KATASATU_KATADUA
+		Global Scope: From Ansible configuration
+		Play Scope: Play and related structures
+		Host Scope: set in inventory (fact gathering, or registered tasks)
+		
+	
