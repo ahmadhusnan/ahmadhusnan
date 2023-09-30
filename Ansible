@@ -282,7 +282,47 @@ RUNNING PLAYBOOK
 			- ansible-playbook --vault-id @prompt site.yml
 			- ansible-playbook --ask-vault-pass site.yml
 			- ansible-playbook --vault-password-file=vault-pw-file site.yml
-		
-		
+	MANAGING FACTS
+		- gather_facts: yes
+		Some of the facts gathered for a managed host might include:
+			• The host name.
+			• The kernel version.
+			• The network interfaces.
+			• The IP addresses.
+			• The version of the operating system.
+			• Various environment variables.
+			• The number of CPUs.
+			• The available or free memory.
+			• The available disk space.
+		/facts.yml
+		---
+		- name: Fact dump
+		  hosts: all
+		  tasks:
+		    - name: Print all facts
+		      debug:
+		        var: ansible-facts
+		FACT 						VARIABLE
+		Short host name 				ansible_facts['hostname'] / ansible_facts.hostname
+		Fully qualified domain name 			ansible_facts['fqdn'] / ansible_facts.fqdn
+		Main IPv4 address (based on routing)		ansible_facts['default_ipv4']['address'] / ansible_facts.default_ipv4.address
+		List of the names of all network interfaces	ansible_facts['interfaces'] / ansible_facts.interfaces
+		Size of the /dev/vda1 disk partition		ansible_facts['devices']['vda']['partitions']['vda1']['size'] / ansible_facts.devices.vda.partitions.vda1.size
+		List of DNS servers 				ansible_facts['dns']['nameservers'] / ansible_facts.dns.nameservers
+		Version of the currently running kernel		ansible_facts['kernel'] / ansible_facts.kernel
+		/facts.yml
+		---
+		- name: all
+		  tasks:
+		    - name: Print various Ansible facts
+		      debug:
+		        msg: >
+                          The default IPv4 address of {{ ansible_facts.fqdn }}
+			  is {{ ansible-facts.default_ipv4.address }}
+		MAGIC VARIABLES
+		hostvars: variables for managed hosts and can get the values for another managed host's variables
+		group_names: lists all group the current managed host is in
+		group: lists all group and hosts in the inventory
+		inventory_hostname: hostname from inventory
 		
 	
