@@ -250,6 +250,39 @@ RUNNING PLAYBOOK
 		VALID VARIABLE NAMES = KATASATU_KATADUA
 		Global Scope: From Ansible configuration
 		Play Scope: Play and related structures
+			--- DEFINE
+			  - hosts: all
+			    vars:
+			      user: joe
+			    vars_files:
+			      vars/users.yaml
+			--- USING VARS
+			- name: Create the user {{ user }}
+			  user:
+			    # This line will create the user named joe
+			    name: "{{ user }}"
 		Host Scope: set in inventory (fact gathering, or registered tasks)
+			[servers:children]
+			servers1
+			servers2
+
+			[servers:vars]
+			user=joe
+	MANAGING SECRET (ANSIBLE-VAULT)
+		- ansible-vault create secret .yml
+			New Vault password: <password>
+			Confirm New Vault password: <password>
+		- ansible-vault create --vault-password-file=vault-pass secret.yml
+		- ansible-vault view secret.yml
+		- ansible-vault edit
+		- ansible-vault encrypt secret1.yml secret2.yml
+		- ansible-vault decrypt secret1.yml secret2.yml
+		- ansible-vault rekey secret.yml
+		- ansible-vault rekey > --new-vault-password-file=NEW_VAULT_PASSWORD_FILE secret.yml
+			- ansible-playbook --vault-id @prompt site.yml
+			- ansible-playbook --ask-vault-pass site.yml
+			- ansible-playbook --vault-password-file=vault-pw-file site.yml
+		
+		
 		
 	
