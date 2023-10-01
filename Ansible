@@ -410,3 +410,73 @@ RUNNING PLAYBOOK
 		    or
 		    ( ansible_distribution == "Fedora" and
 		    ansible_distribution_major_version == "28" )
+	ABSIBLE HANDLERS
+	Tasks that respond to a notification triggered by other tasks by notify handlers (notify)
+	---
+	  tasks:
+	    - name: copy demo.example.conf configuration template
+	      template:
+                src: /var/lib/templates/demo.example.conf.template
+                dest: /etc/httpd/conf.d/demo.example.conf
+              notify:
+                - restart apache
+              handlers:
+                - name: restart apache
+                  service:
+                    name: httpd
+                    state: restarted
+
+	HANDLING TASK FAILURE
+		1. Ignore Task Failure
+		- name: Latest version of notapkg is installed
+		  yum:
+		    name: notapkg
+		    state: latest
+		    ignore_errors: yes
+		2. Force execution of Handlers after Task Failure
+		---
+		- hosts: all
+		  force_handlers: yes
+		  tasks:
+		    - name: a task which always notifies its handler
+		      command: /bin/true
+		      notify: restart the database
+		    - name: a task which fails because the package doesn't exist
+		      yum:
+			name: notapkg
+			state: latest
+		  handlers:
+		    - name: restart the database
+		      service:
+			name: mariadb
+			state: restarted
+		3. Specifying Task Failure Condition
+		script that outputs an error message and use that message to define the failed state for the task.
+		tasks:
+		- name: Run user creation script
+		  shell: /usr/local/bin/create_users.sh
+		  register: command_result
+		  failed_when: "'Password missing' in command_result.stdout"
+		4. Specifying Task Changed Result
+		- name: get Kerberos credentials as "admin"
+		  shell: echo "{{ krb_admin_pass }}" | kinit -f admin
+		  changed_when: false
+		5. Block and Error handling
+		• block: Defines the main tasks to run.
+		• rescue: Defines the tasks to run if the tasks defined in the block clause fail.
+		• always: Defines the tasks that will always run independently of the success or failure of tasks
+		  defined in the block and rescue clauses.
+		tasks:
+		  - block:
+		      - name: upgrade the database
+			shell:
+			  cmd: /usr/local/lib/upgrade-database
+		    rescue:
+		      - name: revert the database upgrade
+			shell:
+			  cmd: /usr/local/lib/revert-database
+		    always:
+		      - name: always restart the database
+			service:
+			  name: mariadb
+			  state: restarted
