@@ -324,5 +324,89 @@ RUNNING PLAYBOOK
 		group_names: lists all group the current managed host is in
 		group: lists all group and hosts in the inventory
 		inventory_hostname: hostname from inventory
-		
-	
+	LOOPING AND CONDITIONAL TASKS
+		---
+		    - name: Postfix and Dovecot is running
+		      service:
+                        name: "{{ item }}"
+                        state: started
+                      loop:
+                        - postfix
+                        - dovecot
+		or
+		---
+		  vars:
+		    mail_service:
+		      - postfix
+                      - dovecot
+		    - name: User Postfix and Dovecot are running
+		      service:
+		        name: "{{ item }}"
+                        state: started
+                      loop: "{{ mail_service }}"
+  		---
+		    - name: Users exist and are in the correct groups
+		      user:
+                        name: "{{ item.name }}"
+                        state: present
+                        groups: "{{ item.groups }}"
+                      loop:
+                        - name: jane
+                          groups: wheel
+                        - name: joe
+                          groups: roo
+		LOOP KEYWORD 			DESCRIPTION
+		with_items			Behaves the same as the loop keyword for simple lists, such as a
+						list of strings or a list of hashes/dictionaries. Unlike loop, if lists of
+						lists are provided to with_items, they are flattened into a singlelevel list. 
+						The loop variable item holds the list item used during each iteration.
+		with_file			This keyword requires a list of control node file names. 
+						The loop variable item holds the content of a corresponding file from the file
+						list during each iteration.
+		with_sequence 			Instead of requiring a list, this keyword requires parameters to
+						generate a list of values based on a numeric sequence. The loop
+						variable item holds the value of one of the generated items in the
+						generated sequence during each iteration.
+		CONDITIONALLY TASKS
+		---
+		- name: Test Variable is Defined Demo
+		  hosts: all
+		  vars:
+		  my_service: httpd
+		  tasks:
+		    - name: "{{ my_service }} package is installed"
+		      yum:
+			name: "{{ my_service }}"
+			when: my_service is defined
+		EXAMPLE CONDITIONAL
+		OPERATION 			EXAMPLE
+		Equal (value is a string) 	ansible_machine == "x86_64"
+		Equal (value is numeric) 	max_memory == 512
+		Less than 			min_memory < 128
+		Greater than 			min_memory > 256
+		Less than or equal to 		min_memory <= 256
+		Greater than or equal to 	min_memory >= 512
+		Not equal to 			min_memory != 512
+		Variable exists 		min_memory is defined
+		Variable does not exist 	min_memory is not defined
+		Boolean variable is true.	memory_available
+		The values of 1, True, or
+		yes evaluate to true. The
+		values of 0, False, or no
+		evaluate to false.
+		Boolean variable is false. 	not memory_available
+		First variable's value is	ansible_distribution in supported_distros
+		present as a value in second
+		variable's list
+		ex.
+		when: ansible_distribution == "RedHat" or ansible_distribution == "Fedora"
+		when: ansible_distribution_version == "7.5" and ansible_kernel == "3.10.0-327.el7.x86_64"
+		when:
+		  - ansible_distribution_version == "7.5"
+		  - ansible_kernel == "3.10.0-327.el7.x86_64"
+		when: >
+		    ( ansible_distribution == "RedHat" and
+		      ansible_distribution_major_version == "7" )
+		    or
+		    ( ansible_distribution == "Fedora" and
+		    ansible_distribution_major_version == "28" )
