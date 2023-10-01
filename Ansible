@@ -480,3 +480,107 @@ RUNNING PLAYBOOK
 			service:
 			  name: mariadb
 			  state: restarted
+
+	#MODIFYING AND COPYING FILES TO HOSTS
+	MODULE NAME		MODULE DESCRIPTION
+	blockinfile 		Insert, update, or remove a block of multiline text surrounded by
+				customizable marker lines.
+	copy 			Copy a file from the local or remote machine to a location on a
+				managed host. Similar to the file module, the copy module can
+				also set file attributes, including SELinux context.
+	fetch 			This module works like the copy module, but in reverse. This module
+				is used for fetching files from remote machines to the control node
+				and storing them in a file tree, organized by host name.
+	file 			Set attributes such as permissions, ownership, SELinux contexts,
+				and time stamps of regular files, symlinks, hard links, and directories.
+				This module can also create or remove regular files, symlinks,
+				hard links, and directories. A number of other file-related modules
+				support the same options to set attributes as the file module,
+				including the copy module.
+	lineinfile 		Ensure a particular line is in a file, or replace an existing line using
+				a backreference regular expression. This module is primarily useful
+				when you want to change a single line in a file.
+	stat 			Retrieve status information for a file, similar to the Linux stat command
+	synchronize 		A wrapper around the rsync command to make common tasks quick
+				and easy. The synchronize module is not intended to provide
+				access to the full power of the rsync command, but does make the
+				most common invocations easier to implement. You may still need
+				to call the rsync command directly via a run command module
+				depending on your use case.
+	MANAGE FILE = touch
+	- name: Touch a file and set permissions 
+	    file:
+	    path: /path/to/file
+	    owner: user1
+	    group: group1
+	    mode: 0640
+	    state: touch
+	output: $ ls -l file
+		  -rw-r----- user1 group1 0 Nov 25 08:00 file
+	
+	MANAGE FILE ATTRIBUTES = chcon 
+	- name: SELinux type is set to samba_share_t
+	    file:
+	    path: /path/to/samba_file
+	    setype: samba_share_t
+	output: $ ls -Z samba_file
+		  -rw-r--r-- owner group unconfined_u:object_r:samba_share_t:s0 samba_file
+	
+	MANAGE SELINUX PERSISTENT = semanage fcontex
+	- name: SELinux type is persistently set to samba_share_t
+	  sefcontext:
+            target: /path/to/samba_file
+            setype: samba_share_t
+            state: present
+         output: ls -Z samba_file
+		  -rw-r--r-- owner group unconfined_u:object_r:samba_share_t:s0 samba_file
+
+	COPY AND EDIT FILES
+	- name: Copy a file to managed hosts
+	  copy:
+	    src: file
+	    dest: /path/to/file
+	- name: Add a line of text to a file
+	  lineinfile:
+	    path: /path/to/file
+            line: 'Add this line to the file'
+	    state: present
+	- name: Add additional lines to a file
+	  blockinfile:
+	    path: /path/to/file
+	    block: |
+	      First line in the additional block of text
+	      Second line in the additional block of text
+  	  state: present
+
+	REMOVE FILE
+	- name: Make sure a file does not exist on managed hosts
+	  file:
+	    dest: /path/to/file
+	    state: absent
+
+	CHECKSUM FILE & ETC PASSWD CHECK
+	- name: Verify the checksum of a file
+	  stat:
+	  path: /path/to/file
+	  checksum_algorithm: md5
+	  register: result
+	- debug
+	    msg: "The checksum of the file is {{ result.stat.checksum }}"
+
+	- name: Examine all stat output of /etc/passwd
+	  hosts: localhost
+	  tasks:
+	    - name: stat /etc/passwd
+	      stat:
+	        path: /etc/passwd
+	      register: results
+	    - name: Display stat results
+	      debug:
+		var: results
+
+	SYNC FILES
+	- name: synchronize local file to remote files
+	  synchronize:
+	  src: file
+	  dest: /path/to/file
