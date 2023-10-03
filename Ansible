@@ -584,3 +584,84 @@ RUNNING PLAYBOOK
 	  synchronize:
 	  src: file
 	  dest: /path/to/file
+
+	JINJA2 CUSTOM FILE
+	expression : {{ EXPR }}
+	loop/logic : {% EXPR %}
+	text	   : {# /etc/hosts line #}
+	ex.
+		{# /etc/hosts line #}
+		{{ ansible_facts.default_ipv4.address }} {{ ansible_facts.hostname }}
+		--- /ansible_facts.date_time.date.jw
+		Welcome to {{ ansible_facts.hostname }}.
+		Today's date is: {{ ansible_facts.date_time.date }}.
+		---
+		  tasks:
+		    - name: template render
+		      template:
+			src: /tmp/j2-template.j2
+			dest: /tmp/dest-config-file.txt
+	LOOP JINJA
+	---
+	{% for user in users %}
+	{{ user }}
+	{% endfor %}
+	---
+	{# for statement #}
+	{% for myuser in users if not myuser == "root" %}
+	User number {{loop.index}} - {{ myuser }}
+	{% endfor %}
+	---
+	{% for myhost in groups['myhosts'] %}
+	{{ myhost }}
+	{% endfor %}
+	---
+	- name: /etc/hosts is up to date
+	  hosts: all
+	  gather_facts: yes
+	  tasks:
+	    - name: Deploy /etc/hosts
+	      template:
+		src: templates/hosts.j2
+		dest: /etc/hosts
+	--- /templates/hosts.j2
+	{% for host in groups['all'] %}
+	{{ hostvars[host]['ansible_facts']['default_ipv4']['address'] }} {{ hostvars[host]
+	['ansible_facts']['fqdn'] }} {{ hostvars[host]['ansible_facts']['hostname'] }}
+	{% endfor %}
+
+	CONDITIONAL JINJA 
+	{% if finished %}
+	{{ result }}
+	{% endif %}
+
+	FILTER VARIABLE
+	{{ output | to_json }}
+	{{ output | to_yaml }}
+	Built-in
+	Ansible filters used to test return values include failed, changed, succeeded, and skipped.
+
+	CONFIGURING PARALLELISM
+	/ansible.cfg
+	forks = 5
+	ansble -f 5
+
+	INCLUDING AND IMPORTING FILES
+	---
+	  tasks:
+	    - name: Prepare the web server
+	      import_playbook: web.yml
+	    - name: Prepare the database server
+	      import_playbook: db.yml
+
+	INCLUDING TASKS
+	---
+	  tasks:
+	  - import_tasks: webserver_tasks.yml
+	---
+	  tasks:
+	    - name: Import task file and set variables
+	      import_tasks: task.yml
+	      vars:
+		package: httpd
+		service: service
