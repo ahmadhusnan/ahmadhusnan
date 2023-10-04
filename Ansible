@@ -665,3 +665,153 @@ RUNNING PLAYBOOK
 	      vars:
 		package: httpd
 		service: service
+
+	PLAYBOOKS WITH ROLES
+	Structure user.example role
+	user.example/	
+	├── defaults
+	│ └── main.yml
+	├── files
+	├── handlers
+	│ └── main.yml
+	├── meta
+	│ └── main.yml
+	├── README.md
+	├── tasks
+	│ └── main.yml
+	├── templates
+	├── tests
+	│ ├── inventory
+	│ └── test.yml
+	└── vars
+	  └── main.yml
+	SUBDIRECTORY 		FUNCTION
+	defaults		The main.yml file in this directory contains the default values of role
+				variables that can be overwritten when the role is used
+	files			This directory contains static files that are referenced by role tasks.
+	handlers		The main.yml file in this directory contains the role's handler definitions
+	meta			The main.yml file in this directory contains information about the role,
+				including author, license, platforms, and optional role dependencies.
+	tasks 			The main.yml file in this directory contains the role's task definitions.
+	templates 		This directory contains Jinja2 templates that are referenced by role tasks
+	tests			This directory can contain an inventory and test.yml playbook that can be
+				used to test the role.
+	vars			The main.yml file in this directory defines the role's variable values.
+				Often these variables are used for internal purposes within the role. These
+				variables have high precedence, and are not intended to be changed when
+				used in a playbook.
+	---
+	- hosts: remote.example.com
+	  roles:
+	    - role1
+	    - role2
+	      var1: val1
+	      var2: val2
+	---
+	- name: Play to illustrate order of execution
+	  hosts: remote.example.com
+	  pre_tasks:
+	    - debug:
+	        msg: 'pre-task'
+	      notify: my handler
+	  roles:
+	    - role1
+	  tasks:
+	    - debug:
+	        msg: 'first task'
+	      notify: my handler
+	  post_tasks:
+	    - debug:
+	        msg: 'post-task'
+	      notify: my handler
+	  handlers:
+	    - name: my handler
+	      debug:
+		msg: Running my handler
+	- name: Execute a role as a task
+	  hosts: remote.example.com
+	  tasks:
+	    - name: A normal task
+	      debug:
+	        msg: 'first task'
+	    - name: A task to include role2 here
+	      include_role: role2
+
+	ROLE STRUCTURE
+	~/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles
+	roles/
+	└── motd
+		├── defaults
+		│ └── main.yml
+		├── files
+		├── handlers
+		├── meta
+		│ └── main.yml
+		├── README.md
+		├── tasks
+		│ └── main.yml
+		└── templates
+			└── motd.j2
+
+	ANSIBLE-GALAXY
+	Create directory structure
+		ansible-galaxy init my_new_role
+		ls my_new_role
+	--- roles/motd/tasks/main.yml
+	# tasks file for motd
+	- name: deliver motd file
+	  template:
+	    src: motd.j2
+	    dest: /etc/motd
+	    owner: root
+	    group: root
+	    mode: 0444	
+	/roles/motd/templates/motd.j2
+	This is the system {{ ansible_facts['hostname'] }}.
+	Today's date is: {{ ansible_facts['date_time']['date'] }}.
+
+	Only use this system with permission.
+	You can ask {{ system_owner }} for access.
+	
+	/defaults/main.yml (values)
+	---
+	system_owner: user@host.example.com
+
+	/meta/main.yml
+	---
+	dependencies:
+	  - role: apache
+	    port: 8080
+	  - role: postgres
+	    dbname: serverlist
+	    admin_user: felix
+	
+	---
+	- name: use motd role playbook
+	  hosts: remote.example.com
+	  user: devops
+	  become: true
+	  roles:
+	    - motd
+
+	OVERWRITTEN ROLE BEHAVIOR
+	---
+	- name: use motd role playbook
+	  hosts: remote.example.com
+	  user: devops
+	  become: true
+	  vars:
+	    system_owner: someone@host.example.com
+	  roles:
+	    - role: motd
+
+	---
+	- name: use motd role playbook
+	  hosts: remote.example.com
+	  user: devops
+	  become: true
+	  roles:
+	    - role: motd
+	      system_owner: someone@host.example.com
+
+	
