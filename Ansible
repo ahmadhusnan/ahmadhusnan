@@ -814,4 +814,126 @@ RUNNING PLAYBOOK
 	    - role: motd
 	      system_owner: someone@host.example.com
 
+	DEPLOY ROLES WITH ANSIBLE
+	1. ansible-galaxy search <name roles> -p roles
+        2. ansible-galaxy list <name roles> -p roles
+        3. ansible-galaxy install <name roles> -p roles
+	--- [roles/requirement.yml]
+	- src: <name role>
+          version: "1.5.0"
+          name: <custom name>
+
+        ---
+        - src: https://gitlab or git@gitlab
+          scm: git
+          version: 41241 or master
+          name: nginx-acme-ssh
+
+        ---
+        - src: file:///opt/local/roles/myrole.tar
+          name: myrole
+
+	RHEL System Roles
+	NAME 				STATE 			ROLE DESCRIPTION
+	rhel-system-roles.kdump 	Fully Supported 	Configures the kdump crash
+								recovery service.
+	rhel-system-roles.network 	Fully Supported 	Configures network interfaces.
+	rhel-system-roles.selinux 	Fully Supported 	Configures and manages SELinux
+								customization, including SELinux
+								mode, file and port contexts,
+								Boolean settings, and SELinux
+								users.
+	rhel-system-roles.timesync 	Fully Supported 	Configures time synchronization
+								using Network Time Protocol or
+								Precision Time Protocol.
+	rhel-system-roles.postfix 	Technology		Configures each host as a Mail
+					Preview			Transfer Agent using the Postfix
+								service.
+	rhel-system-roles.firewall 	In Development 		Configures a host's firewall.
+	rhel-system-roles.tuned 	In Development 		Configures the tuned service to
+								tune system performance.
+
+	1.  subscription-manager repos --enable rhel-7-server-extras-rpms
+	2.  yum install rhel-system-roles
+	3.  ls -l /usr/share/ansible/roles/
+
+	--- [rhel-system-roles.timesync]
+	- name: Time Synchronization Play
+	  hosts: servers
+	  vars:
+	    timesync_ntp_servers:
+	      - hostname: 0.rhel.pool.ntp.org
+	        iburst: yes
+              - hostname: 1.rhel.pool.ntp.org
+                iburst: yes
+              - hostname: 2.rhel.pool.ntp.org
+                iburst: yes
+            timezone: UTC
+
+          roles:
+	    - rhel-system-roles.timesync
+	  
+	  tasks:
+	    - name: Set timezone
+              timezone:
+                name: "{{ timezone }}"
+
+	[root@host playbook-project]# tree.
+	├── ansible.cfg
+	├── group_vars
+	│ └── servers
+	│ └── timesync.yml (1)
+	├── inventory
+	└── timesync_playbook.yml (2)
+	(1)
+	timesync_ntp_servers:
+	 - hostname: 0.rhel.pool.ntp.org
+	 iburst: yes
+	 - hostname: 1.rhel.pool.ntp.org
+	 iburst: yes
+	 - hostname: 2.rhel.pool.ntp.org
+	 iburst: yes
+	timezone: UTC
+	(2)
+	 hosts: servers
+	 roles:
+	   - rhel-system-roles.timesync
+	 tasks:
+	   - name: Set timezone
+	       timezone:
+	         name: "{{ timezone }}"
+
+	--- [rhel-system-roles.selinux]
+	- name: Apply SELinux role
+	  block:
+	  - include_role:
+ 	      name: rhel-system-roles.selinux
+ 	  rescue:
+ 	    - name: Check for failure for other reasons than required reboot
+ 	      fail:
+              when: not selinux_reboot_required
+ 
+	    - name: Restart managed host
+	      reboot:
+	        
+	    - name: Reapply SELinux role to complete changes
+	      include_role:
+                name: rhel-system-roles.selinux
+
+	selinux_state: enforcing
+	selinux_booleans:
+	  - name: 'httpd_enable_homedirs'
+	    state: 'on'
+	    persistent: 'yes'
+	selinux_fcontexts:
+	  - target: '/srv/www(/.*)?'
+	    setype: 'httpd_sys_content_t'
+ 	    state: 'present'
+	selinux_restore_dirs:
+	  - /srv/www
+	selinux_ports:
+	  - ports: '82'
+ 	    setype: 'http_port_t'
+	    proto: 'tcp'
+	    state: 'present'
 	
