@@ -12,3 +12,16 @@ CREATE READ ONLY USER
   GRANT SELECT ON ALL TABLES IN SCHEMA <SCHEMA NAME> TO <ROLE NAME>;
   GRANT <ROLE NAME> TO <READ ONLY USER NAME>;
   ALTER USER <READ ONLY USER NAME> SET DEFAULT ROLE <ROLE NAME>;
+
+-------------------------
+QUERY By Time & Status
+-------------------------
+select e.submission_date, e."number",
+	case 
+		when e.last_status = 50 then 'Menunggu Pembayaran'
+		when e.last_status = 999 then 'Lunas'
+		when e.last_status = 777 then 'Dibatalkan'
+		else 'error'
+	end as status
+from <table name> e 
+where e.submission_date >= '2025-05-17 00:00:00.000 +0700' and e.last_status in (50,777,999);
