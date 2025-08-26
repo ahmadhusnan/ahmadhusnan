@@ -1,0 +1,160 @@
+=================================
+Install Nginx with Let's Encrypt
+=================================
+
+Step 1: Install Nginx
+  1. sudo apt update
+  2. sudo apt install nginx -y
+
+Step 2: Create Nginx Configuration for Your Domain
+  1. sudo nano /etc/nginx/sites-available/test.com
+---------------------------------------------------
+      server {
+            listen 80;
+            server_name test.com www.test.com;
+
+            root /var/www/test.com/html;
+            index index.html;
+
+            location / {
+            try_files $uri $uri/ =404;
+            }
+        }
+----------------------------------------------------
+Create the web directory:
+  1. sudo mkdir -p /var/www/test.com/html
+  2. sudo chown -R $USER:$USER /var/www/test.com/html
+
+Enable the site:
+  1. sudo ln -s /etc/nginx/sites-available/test.com /etc/nginx/sites-enabled/
+  2. sudo nginx -t  # Test configuration
+  3. sudo systemctl restart nginx
+
+Step 3: Install Certbot
+  1. sudo apt install certbot python3-certbot-nginx -y
+
+Step 4: Obtain SSL Certificate
+  1. sudo certbot --nginx -d test.com -d www.test.com
+
+Step 5: Verify Automatic Renewal
+
+Let's Encrypt certificates expire after 90 days. Certbot sets up automatic renewal, but you can test it with:
+  1. sudo certbot renew --dry-run
+
+Final Nginx Configuration
+
+Your final configuration in /etc/nginx/sites-available/test.com should look similar to this (Certbot modifies it):
+nginx
+----------------------------------------------
+server {
+    server_name test.com www.test.com;
+
+    root /var/www/test.com/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    listen [::]:443 ssl ipv6only=on;
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/test.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/test.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    if ($host = www.test.com) {
+        return 301 https://$host$request_uri;
+    }
+
+    if ($host = test.com) {
+        return 301 https://$host$request_uri;
+    }
+
+    listen 80;
+    listen [::]:80;
+    server_name test.com www.test.com;
+    return 404;
+}
+---------------------------------------------------
+================================
+Install nginx with exisiting ssl
+================================
+Step 1: Install nginx
+  1. sudo apt update
+  2. sudo apt install nginx
+
+Step 2: Locate Your SSL Certificate Files
+  1. First, find where your existing SSL certificates for kemnbud.co.id are located.
+
+Step 3: Create nginx Configuration
+Create a new configuration file for your subdomain:
+  1. sudo nano /etc/nginx/sites-available/<domain>
+--------------------------------------------------
+erver {
+    listen 80;
+    server_name <domain>;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name <domain>;
+
+    # SSL Certificate paths - UPDATE THESE PATHS
+    ssl_certificate /path/to/your/<domain>/fullchain.pem;
+    ssl_certificate_key /path/to/your/<domain>/privkey.pem;
+
+    # SSL Configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=63072000" always;
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+
+    # Root directory and index
+    root /var/www/<domain>;
+    index index.html index.htm index.php;
+
+    # Logging
+    access_log /var/log/nginx/<domain>.access.log;
+    error_log /var/log/nginx/<domain>.error.log;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # PHP handling (if needed)
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+    }
+
+    # Static file caching
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+        expires 1M;
+        add_header Cache-Control "public";
+    }
+}
+--------------------------------------------------
+
+Step 4: Enable the Site
+Create a symbolic link to enable the site:
+  1. sudo ln -s /etc/nginx/sites-available/mtnsenibudaya.kemnbud.co.id /etc/nginx/sites-enabled/
+
+Step 5: Create Web Directory
+Create the web root directory:
+  1. sudo mkdir -p /var/www/mtnsenibudaya
+  2. sudo chown -R www-data:www-data /var/www/mtnsenibudaya
+  3. sudo chmod -R 755 /var/www/mtnsenibudaya
+
+Step 6: Test Configuration and Reload nginx
+Test the configuration for syntax errors:
+  1. sudo nginx -t
+  2. sudo systemctl reload nginx
+
