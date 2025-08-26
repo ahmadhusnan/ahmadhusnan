@@ -1,0 +1,19 @@
+#Dibawah ini merupakan cara untuk mengextend lvm 
+
+  1. sudo lsblk / sudo lsblk -f
+  
+  #format disk
+  2. fdisk <disk kosong>
+  select n -> p -> default partition number -> default first sector -> default last sector
+  sudo lsblk
+
+  #create physical, volume , logical volume
+  sudo pvcreate /dev/sdb1
+  sudo pvs
+  sudo vgs
+  sudo vgextend {nama_vg} /dev/sdb1
+  sudo vgs
+  sudo lvdisplay
+
+  #extend exising lvm
+  sudo lvextend -l +100%FREE --resizefs /dev/ubuntu-vg/ubuntu-lv
