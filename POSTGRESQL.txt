@@ -35,3 +35,25 @@ select e.submission_date, e."number",
 	end as status
 from <table name> e 
 where e.submission_date >= '2025-05-17 00:00:00.000 +0700' and e.last_status in (50,777,999);
+
+--------------------------
+CHANGE OWNERSHIP ALL
+--------------------------
+ALTER DATABASE <database name> OWNER TO <owner>;
+
+SELECT 'ALTER SCHEMA "'|| schema_name ||'" OWNER TO <owner>;'
+FROM information_schema.schemata 
+WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+ORDER BY schema_name;
+
+SELECT 'ALTER TABLE '|| schemaname || '."' || tablename ||'" OWNER TO <owner>;'
+FROM pg_tables WHERE NOT schemaname IN ('pg_catalog', 'information_schema')
+ORDER BY schemaname, tablename;
+
+SELECT 'ALTER SEQUENCE '|| sequence_schema || '."' || sequence_name ||'" OWNER TO <owner>;'
+FROM information_schema.sequences WHERE NOT sequence_schema IN ('pg_catalog', 'information_schema')
+ORDER BY sequence_schema, sequence_name;
+
+SELECT 'ALTER VIEW '|| table_schema || '."' || table_name ||'" OWNER TO <owner>;'
+FROM information_schema.views WHERE NOT table_schema IN ('pg_catalog', 'information_schema')
+ORDER BY table_schema, table_name;
